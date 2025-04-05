@@ -1,0 +1,17 @@
+- renommer les éléments (portes/plateformes ?) "maroon" en "brown" et regénérer les SVG + PAS
+- choisir une ou plusieurs musiques de fond
+- choisir des bruitages
+- faire animation "coin" avec choix de sa couleur
+- faire animation(s) personnage(s) (avec possibilité de choisir le type de personnage au cas où on en ajoute plus tard)
+- trouver une image pour de la lave ou des pics afin d'avoir un fond à chaque salle en cas de chute du joueur
+- pouvoir changer le mur du fond en fonction des salles (ou d'un niveau de jeu)
+
+- dans l'éditeur de niveau, ne pas autoriser la fermeture sans choisir de sauvegarder ou annuler les modifications en cours
+- dans l'éditeur de niveau, activer le drag&drop sur les images pour pouvoir les glisser dans la zone de scroll et sur la zone de scroll elle-même
+- dans l'éditeur de niveau, à l'ouverture du programme charger le niveau ou le créer si inexistant
+- dans l'éditeur de niveau, implémenter les ajouts de salles et le déplacement de l'une vers l'autre
+- dans l'éditeur de niveau, implémenter les propriétés des portes (pour choisir une autre porte)
+- dans l'éditeur de niveau, implémenter le positionnement du joueur par défaut
+- dans l'éditeur de niveau, ajouter d'autres types de plateformes (plus larges)
+
+- faire le jeu (sans fioritures pour al rpemière version, directement menu + écran de jeu
