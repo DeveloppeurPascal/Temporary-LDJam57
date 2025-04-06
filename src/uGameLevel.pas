@@ -8,9 +8,10 @@ uses
 
 type
 {$SCOPEDENUMS ON}
-  TGameLevelPlatformLook = (None, GreyLarge, GreyLargeBroken, GreyShort,
-    GreyShortBroken, BrownLarge, BrownLargeBroken, BrownShort,
-    BrownShortBroken);
+  TGameLevelCharacterLook = (None, Zombie);
+
+  TGameLevelPlatformLook = (None, Castle, Dirt, Grass, Sand, Snow, Stone);
+  TGameLevelPlatformEndType = (None, Bloc, Cliff);
 
   // TODO : add XML Doc comments
 
@@ -20,22 +21,34 @@ type
 
   // TODO : ajouter un mot de passe facultatif pour accéder à un niveau de jeu depuis l'éditeur de niveaux (en mise à jour)
 
+  // TODO : ajouter un chargement des portes liées à une salle depuis la liste domplète des portes afin d'optimiser les affichages et tests de collision en cours de partie
+
+  // TODO : remplacer le load/save des types énumérés par une valeur dont la taille est maîtrisée (par mesure de précaution)
+
   TGameLevelPlatform = class
   private
-    FWidth: cardinal;
-    FLook: TGameLevelPlatformLook;
     FX: cardinal;
     FY: cardinal;
-    procedure SetLook(const Value: TGameLevelPlatformLook);
-    procedure SetWidth(const Value: cardinal);
+    FNbBloc: cardinal;
+    FLeftBlocType: TGameLevelPlatformEndType;
+    FLook: TGameLevelPlatformLook;
+    FRightBlocType: TGameLevelPlatformEndType;
     procedure SetX(const Value: cardinal);
     procedure SetY(const Value: cardinal);
+    procedure SetLook(const Value: TGameLevelPlatformLook);
+    procedure SetLeftBlocType(const Value: TGameLevelPlatformEndType);
+    procedure SetNbBloc(const Value: cardinal);
+    procedure SetRightBlocType(const Value: TGameLevelPlatformEndType);
   protected
   public
     property X: cardinal read FX write SetX;
     property Y: cardinal read FY write SetY;
-    property Width: cardinal read FWidth write SetWidth;
+    property NbBloc: cardinal read FNbBloc write SetNbBloc;
     property Look: TGameLevelPlatformLook read FLook write SetLook;
+    property LeftBlocType: TGameLevelPlatformEndType read FLeftBlocType
+      write SetLeftBlocType;
+    property RightBlocType: TGameLevelPlatformEndType read FRightBlocType
+      write SetRightBlocType;
     constructor Create; virtual;
     procedure SaveToStream(const AStream: TStream);
     procedure LoadFromStream(const AStream: TStream);
@@ -159,19 +172,29 @@ uses
 constructor TGameLevelPlatform.Create;
 begin
   inherited;
-  FLook := TGameLevelPlatformLook.None;
   FX := 0;
   FY := 0;
-  FWidth := 0;
+  FNbBloc := 0;
+  FLook := TGameLevelPlatformLook.None;
+  FLeftBlocType := TGameLevelPlatformEndType.None;
+  FRightBlocType := TGameLevelPlatformEndType.None;
 end;
 
 procedure TGameLevelPlatform.LoadFromStream(const AStream: TStream);
 begin
   // TODO : ajouter la vérification du numéro de version de cette classe
-  if (AStream.Read(FWidth, sizeof(FWidth)) <> sizeof(FWidth)) then
+  if (AStream.Read(FNbBloc, sizeof(FNbBloc)) <> sizeof(FNbBloc)) then
     raise exception.Create('Wrong file format !');
 
   if (AStream.Read(FLook, sizeof(FLook)) <> sizeof(FLook)) then
+    raise exception.Create('Wrong file format !');
+
+  if (AStream.Read(FLeftBlocType, sizeof(FLeftBlocType)) <>
+    sizeof(FLeftBlocType)) then
+    raise exception.Create('Wrong file format !');
+
+  if (AStream.Read(FRightBlocType, sizeof(FRightBlocType)) <>
+    sizeof(FRightBlocType)) then
     raise exception.Create('Wrong file format !');
 
   if (AStream.Read(FX, sizeof(FX)) <> sizeof(FX)) then
@@ -184,8 +207,10 @@ end;
 procedure TGameLevelPlatform.SaveToStream(const AStream: TStream);
 begin
   // TODO : ajouter un numéro de version pour cette classe
-  AStream.Write(FWidth, sizeof(FWidth));
+  AStream.Write(FNbBloc, sizeof(FNbBloc));
   AStream.Write(FLook, sizeof(FLook));
+  AStream.Write(FLeftBlocType, sizeof(FLeftBlocType));
+  AStream.Write(FRightBlocType, sizeof(FRightBlocType));
   AStream.Write(FX, sizeof(FX));
   AStream.Write(FY, sizeof(FY));
 end;
@@ -195,9 +220,21 @@ begin
   FLook := Value;
 end;
 
-procedure TGameLevelPlatform.SetWidth(const Value: cardinal);
+procedure TGameLevelPlatform.SetLeftBlocType(const Value
+  : TGameLevelPlatformEndType);
 begin
-  FWidth := Value;
+  FLeftBlocType := Value;
+end;
+
+procedure TGameLevelPlatform.SetNbBloc(const Value: cardinal);
+begin
+  FNbBloc := Value;
+end;
+
+procedure TGameLevelPlatform.SetRightBlocType(const Value
+  : TGameLevelPlatformEndType);
+begin
+  FRightBlocType := Value;
 end;
 
 procedure TGameLevelPlatform.SetX(const Value: cardinal);
