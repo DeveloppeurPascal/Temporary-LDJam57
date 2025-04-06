@@ -17,9 +17,25 @@ Type
 {$SCOPEDENUMS ON}
   TSprite = class(TImage)
   private
+    FGameLevelControl: TGameLevelControl;
+    procedure SetGameLevelControl(const Value: TGameLevelControl);
+    /// <summary>
+    /// Don't call this constructor, use
+    /// Create(AOwner: TComponent; const AGameLevelControl: TGameLevelControl)
+    /// </summary>
+    constructor Create(AOwner: TComponent); overload; override;
+    procedure SetX(const Value: Single);
+    procedure SetY(const Value: Single);
+    function GetX: Single;
+    function GetY: Single;
   protected
   public
-    constructor Create(AOwner: TComponent); override;
+    property X: Single read GetX write SetX;
+    property Y: Single read GetY write SetY;
+    property GameLevelControl: TGameLevelControl read FGameLevelControl
+      write SetGameLevelControl;
+    constructor Create(AOwner: TComponent;
+      const AGameLevelControl: TGameLevelControl); overload; virtual;
     procedure RefreshImage; virtual; abstract;
   end;
 
@@ -37,8 +53,8 @@ Type
     property Look: TGameLevelDoorLook read FLook write SetLook;
     property Direction: TGameLevelDoorDirection read FDirection
       write SetDirection;
-    constructor Create(AOwner: TComponent); overload; override;
-    constructor Create(AOwner: TComponent; ALook: TGameLevelDoorLook); overload;
+    constructor Create(AOwner: TComponent;
+      const AGameLevelControl: TGameLevelControl); override;
     procedure RefreshImage; override;
   end;
 
@@ -60,9 +76,8 @@ Type
       write SetLeftBlocType;
     property RightBlocType: TGameLevelPlatformEndType read FRightBlocType
       write SetRightBlocType;
-    constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent;
-      ALook: TGameLevelPlatformLook); overload;
+      const AGameLevelControl: TGameLevelControl); override;
     procedure RefreshImage; override;
   end;
 
@@ -73,9 +88,8 @@ Type
   protected
   public
     property Look: TGameLevelCharacterLook read FLook write SetLook;
-    constructor Create(AOwner: TComponent); overload; override;
     constructor Create(AOwner: TComponent;
-      const ALook: TGameLevelCharacterLook); overload;
+      const AGameLevelControl: TGameLevelControl); override;
     procedure RefreshImage; override;
   end;
 
@@ -88,11 +102,19 @@ Type
 
   TItemSprite = class(TSprite)
   private
+    FItemType: TGameLevelItemType;
+    procedure SetItemType(const Value: TGameLevelItemType);
   protected
   public
+    property ItemType: TGameLevelItemType read FItemType write SetItemType;
+    // TODO : gérer animations
+    // TODO : à ramasser ou pas, dangereux ou pas, bloquant ou pas
+    constructor Create(AOwner: TComponent;
+      const AGameLevelControl: TGameLevelControl); override;
+    procedure RefreshImage; override;
   end;
 
-function GetBitmapScale: single;
+function GetBitmapScale: Single;
 
 implementation
 
@@ -106,9 +128,10 @@ uses
   FMX.Platform,
   FMX.Graphics,
   USVGPlatformerAssetsBase,
-  USVGCharacters;
+  USVGCharacters,
+  USVGJumperPack;
 
-function GetBitmapScale: single;
+function GetBitmapScale: Single;
 var
   svc: IFMXScreenService;
 begin
@@ -119,18 +142,22 @@ begin
     result := 1;
 end;
 
-constructor TDoorSprite.Create(AOwner: TComponent);
+constructor TDoorSprite.Create(AOwner: TComponent;
+  const AGameLevelControl: TGameLevelControl);
 begin
   inherited;
-  FLook := TGameLevelDoorLook.None;
-  FDirection := TGameLevelDoorDirection.Back;
-  FId := 0;
-end;
-
-constructor TDoorSprite.Create(AOwner: TComponent; ALook: TGameLevelDoorLook);
-begin
-  TDoorSprite.Create(AOwner);
-  Look := ALook;
+  if assigned(AGameLevelControl) then
+  begin
+    FLook := (AGameLevelControl as TGameLevelDoor).Look;
+    FDirection := (AGameLevelControl as TGameLevelDoor).Direction;
+    FId := (AGameLevelControl as TGameLevelDoor).Id;
+  end
+  else
+  begin
+    FLook := TGameLevelDoorLook.None;
+    FDirection := TGameLevelDoorDirection.Back;
+    FId := 0;
+  end;
 end;
 
 procedure TDoorSprite.RefreshImage;
@@ -160,8 +187,8 @@ begin
     else
       opacity := 1;
     end;
-    wrapmode := timagewrapmode.Original;
-    bitmap.assign(TOlfSVGBitmapList.bitmap(TSVGDoors.tag + SVG,
+    WrapMode := TImageWrapMode.Original;
+    Bitmap.Assign(TOlfSVGBitmapList.Bitmap(TSVGDoors.tag + SVG,
       CDefaultSpriteSize, CDefaultSpriteSize, GetBitmapScale));
   finally
     EndUpdate;
@@ -171,36 +198,46 @@ end;
 procedure TDoorSprite.SetDirection(const Value: TGameLevelDoorDirection);
 begin
   FDirection := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelDoor).Direction := FDirection;
   RefreshImage;
 end;
 
 procedure TDoorSprite.SetId(const Value: cardinal);
 begin
   FId := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelDoor).Id := FId;
 end;
 
 procedure TDoorSprite.SetLook(const Value: TGameLevelDoorLook);
 begin
   FLook := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelDoor).Look := FLook;
   RefreshImage;
 end;
 
 { TPlatformSprite }
 
-constructor TPlatformSprite.Create(AOwner: TComponent);
+constructor TPlatformSprite.Create(AOwner: TComponent;
+  const AGameLevelControl: TGameLevelControl);
 begin
   inherited;
-  FNbBloc := 1;
-  FLeftBlocType := TGameLevelPlatformEndType.None;
-  FRightBlocType := TGameLevelPlatformEndType.None;
-  FLook := TGameLevelPlatformLook.None;
-end;
-
-constructor TPlatformSprite.Create(AOwner: TComponent;
-  ALook: TGameLevelPlatformLook);
-begin
-  TPlatformSprite.Create(AOwner);
-  Look := ALook;
+  if assigned(AGameLevelControl) then
+  begin
+    FNbBloc := (AGameLevelControl as TGameLevelPlatform).NbBloc;
+    FLeftBlocType := (AGameLevelControl as TGameLevelPlatform).LeftBlocType;
+    FRightBlocType := (AGameLevelControl as TGameLevelPlatform).RightBlocType;
+    FLook := (AGameLevelControl as TGameLevelPlatform).Look;
+  end
+  else
+  begin
+    FNbBloc := 1;
+    FLeftBlocType := TGameLevelPlatformEndType.None;
+    FRightBlocType := TGameLevelPlatformEndType.None;
+    FLook := TGameLevelPlatformLook.None;
+  end;
 end;
 
 procedure TPlatformSprite.RefreshImage;
@@ -208,7 +245,7 @@ var
   SVG, SVGBis: integer;
   I: integer;
   LCanvas: TCanvas;
-  BitmapScale: single;
+  BitmapScale: Single;
 begin
   case FLook of
     TGameLevelPlatformLook.None:
@@ -233,15 +270,15 @@ begin
 
   BeginUpdate;
   try
-    wrapmode := timagewrapmode.Original;
+    WrapMode := TImageWrapMode.Original;
     Width := CDefaultSpriteSize * FNbBloc;
-    bitmap.SetSize(trunc(Width * BitmapScale), trunc(height * BitmapScale));
+    Bitmap.SetSize(trunc(Width * BitmapScale), trunc(height * BitmapScale));
     if FNbBloc = 1 then
-      bitmap.assign(TOlfSVGBitmapList.bitmap(TSVGPlatformerAssetsBase.tag + SVG,
+      Bitmap.Assign(TOlfSVGBitmapList.Bitmap(TSVGPlatformerAssetsBase.tag + SVG,
         CDefaultSpriteSize, CDefaultSpriteSize, BitmapScale))
     else
     begin
-      LCanvas := bitmap.Canvas;
+      LCanvas := Bitmap.Canvas;
       LCanvas.BeginScene;
       try
         // Left bloc
@@ -249,7 +286,7 @@ begin
           SVGBis := SVG + CSVGCastleCliffLeft - CSVGCastle
         else
           SVGBis := SVG + CSVGCastleLeft - CSVGCastle;
-        LCanvas.DrawBitmap(TOlfSVGBitmapList.bitmap(TSVGPlatformerAssetsBase.tag
+        LCanvas.DrawBitmap(TOlfSVGBitmapList.Bitmap(TSVGPlatformerAssetsBase.tag
           + SVGBis, CDefaultSpriteSize, CDefaultSpriteSize, BitmapScale),
           trectf.Create(0, 0, CDefaultSpriteSize, CDefaultSpriteSize),
           trectf.Create(0, 0, CDefaultSpriteSize, CDefaultSpriteSize), 1);
@@ -257,7 +294,7 @@ begin
         SVGBis := SVG + CSVGCastleMid - CSVGCastle;
         for I := 1 to FNbBloc - 2 do
           LCanvas.DrawBitmap
-            (TOlfSVGBitmapList.bitmap(TSVGPlatformerAssetsBase.tag + SVGBis,
+            (TOlfSVGBitmapList.Bitmap(TSVGPlatformerAssetsBase.tag + SVGBis,
             CDefaultSpriteSize, CDefaultSpriteSize, BitmapScale),
             trectf.Create(0, 0, CDefaultSpriteSize, CDefaultSpriteSize),
             trectf.Create(CDefaultSpriteSize * I - 1, 0,
@@ -268,10 +305,10 @@ begin
           SVGBis := SVG + CSVGCastleCliffRight - CSVGCastle
         else
           SVGBis := SVG + CSVGCastleRight - CSVGCastle;
-        LCanvas.DrawBitmap(TOlfSVGBitmapList.bitmap(TSVGPlatformerAssetsBase.tag
+        LCanvas.DrawBitmap(TOlfSVGBitmapList.Bitmap(TSVGPlatformerAssetsBase.tag
           + SVGBis, CDefaultSpriteSize, CDefaultSpriteSize, BitmapScale),
           trectf.Create(0, 0, CDefaultSpriteSize, CDefaultSpriteSize),
-          trectf.Create(Width - CDefaultSpriteSize-1, 0, Width,
+          trectf.Create(Width - CDefaultSpriteSize - 1, 0, Width,
           CDefaultSpriteSize), 1);
       finally
         LCanvas.EndScene;
@@ -286,12 +323,16 @@ procedure TPlatformSprite.SetLeftBlocType(const Value
   : TGameLevelPlatformEndType);
 begin
   FLeftBlocType := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelPlatform).LeftBlocType := FLeftBlocType;
   RefreshImage;
 end;
 
 procedure TPlatformSprite.SetLook(const Value: TGameLevelPlatformLook);
 begin
   FLook := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelPlatform).Look := FLook;
   RefreshImage;
 end;
 
@@ -301,6 +342,8 @@ begin
     FNbBloc := 1
   else
     FNbBloc := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelPlatform).NbBloc := FNbBloc;
   RefreshImage;
 end;
 
@@ -308,31 +351,75 @@ procedure TPlatformSprite.SetRightBlocType(const Value
   : TGameLevelPlatformEndType);
 begin
   FRightBlocType := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelPlatform).RightBlocType := FRightBlocType;
   RefreshImage;
 end;
 
 { TSprite }
 
+constructor TSprite.Create(AOwner: TComponent;
+  const AGameLevelControl: TGameLevelControl);
+begin
+  inherited Create(AOwner);
+  Width := CDefaultSpriteSize;
+  height := CDefaultSpriteSize;
+  FGameLevelControl := AGameLevelControl;
+  if assigned(AGameLevelControl) then
+  begin
+    position.X := AGameLevelControl.X;
+    position.Y := AGameLevelControl.Y;
+  end;
+end;
+
+function TSprite.GetX: Single;
+begin
+  result := position.X;
+end;
+
+function TSprite.GetY: Single;
+begin
+  result := position.Y;
+end;
+
 constructor TSprite.Create(AOwner: TComponent);
 begin
   inherited;
-  Width := CDefaultSpriteSize;
-  height := CDefaultSpriteSize;
+end;
+
+procedure TSprite.SetGameLevelControl(const Value: TGameLevelControl);
+begin
+  FGameLevelControl := Value;
+end;
+
+procedure TSprite.SetX(const Value: Single);
+begin
+  position.X := Value;
+  if assigned(FGameLevelControl) then
+    FGameLevelControl.X := position.X;
+end;
+
+procedure TSprite.SetY(const Value: Single);
+begin
+  position.Y := Value;
+  if assigned(FGameLevelControl) then
+    FGameLevelControl.Y := position.Y;
 end;
 
 { TCharacterSprite }
 
-constructor TCharacterSprite.Create(AOwner: TComponent);
+constructor TCharacterSprite.Create(AOwner: TComponent;
+  const AGameLevelControl: TGameLevelControl);
 begin
   inherited;
-  FLook := TGameLevelCharacterLook.None;
-end;
-
-constructor TCharacterSprite.Create(AOwner: TComponent;
-  const ALook: TGameLevelCharacterLook);
-begin
-  TCharacterSprite.Create(AOwner);
-  Look := ALook;
+  if assigned(AGameLevelControl) then
+  begin
+    // TODO : à compléter avec TGameLevelCharacter lorsqu'il existera
+  end
+  else
+  begin
+    FLook := TGameLevelCharacterLook.None;
+  end;
 end;
 
 procedure TCharacterSprite.RefreshImage;
@@ -350,8 +437,8 @@ begin
 
   BeginUpdate;
   try
-    wrapmode := timagewrapmode.Original;
-    bitmap.assign(TOlfSVGBitmapList.bitmap(TSVGCharacters.tag + SVG,
+    WrapMode := TImageWrapMode.Original;
+    Bitmap.Assign(TOlfSVGBitmapList.Bitmap(TSVGCharacters.tag + SVG,
       CDefaultSpriteSize, CDefaultSpriteSize, GetBitmapScale));
   finally
     EndUpdate;
@@ -361,6 +448,8 @@ end;
 procedure TCharacterSprite.SetLook(const Value: TGameLevelCharacterLook);
 begin
   FLook := Value;
+  // if assigned(FGameLevelControl) then
+  // (FGameLevelControl as TGameLevelPlatform).LeftBlocType := FLeftBlocType;
   RefreshImage;
 end;
 
@@ -370,6 +459,57 @@ procedure TPlayerSprite.AfterConstruction;
 begin
   inherited;
   Look := TGameLevelCharacterLook.Zombie;
+end;
+
+{ TItemSprite }
+
+constructor TItemSprite.Create(AOwner: TComponent;
+  const AGameLevelControl: TGameLevelControl);
+begin
+  inherited;
+  if assigned(AGameLevelControl) then
+  begin
+    FItemType := (AGameLevelControl as TGameLevelitem).ItemType;
+  end
+  else
+  begin
+    FItemType := TGameLevelItemType.None;
+  end;
+end;
+
+procedure TItemSprite.RefreshImage;
+var
+  SVG: integer;
+begin
+  case FItemType of
+    TGameLevelItemType.None:
+      SVG := -1;
+    TGameLevelItemType.CoinBronze:
+      SVG := CSVGCoinBronze0;
+    TGameLevelItemType.CoinArgent:
+      SVG := CSVGCoinArgent0;
+    TGameLevelItemType.CoinGold:
+      SVG := CSVGCoinOr0;
+  else
+    raise Exception.Create('Unknown item type.');
+  end;
+
+  BeginUpdate;
+  try
+    WrapMode := TImageWrapMode.Original;
+    Bitmap.Assign(TOlfSVGBitmapList.Bitmap(TSVGJumperPack.tag + SVG,
+      CDefaultSpriteSize, CDefaultSpriteSize, GetBitmapScale));
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TItemSprite.SetItemType(const Value: TGameLevelItemType);
+begin
+  FItemType := Value;
+  if assigned(FGameLevelControl) then
+    (FGameLevelControl as TGameLevelitem).ItemType := FItemType;
+  RefreshImage;
 end;
 
 end.

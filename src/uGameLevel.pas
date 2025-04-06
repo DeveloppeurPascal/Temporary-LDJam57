@@ -6,6 +6,13 @@ uses
   System.Generics.Collections,
   System.Classes;
 
+const
+{$IFDEF DEBUG}
+  CDefaultLevelFilePath = '..\..\..\_PRIVATE\GameLevels\ldjam57-debug.lvl';
+{$ELSE}
+  CDefaultLevelFilePath = '..\..\..\_PRIVATE\GameLevels\ldjam57.lvl';
+{$ENDIF}
+
 type
 {$SCOPEDENUMS ON}
   TGameLevelCharacterLook = (None, Zombie);
@@ -25,33 +32,42 @@ type
 
   // TODO : remplacer le load/save des types énumérés par une valeur dont la taille est maîtrisée (par mesure de précaution)
 
-  TGameLevelPlatform = class
+  TGameLevelControl = class
   private
-    FX: cardinal;
-    FY: cardinal;
+    FX: Single;
+    FY: Single;
+    procedure SetX(const Value: Single);
+    procedure SetY(const Value: Single);
+  protected
+  public
+    property X: Single read FX write SetX;
+    property Y: Single read FY write SetY;
+    constructor Create; virtual;
+    procedure SaveToStream(const AStream: TStream); virtual;
+    procedure LoadFromStream(const AStream: TStream); virtual;
+  end;
+
+  TGameLevelPlatform = class(TGameLevelControl)
+  private
     FNbBloc: cardinal;
     FLeftBlocType: TGameLevelPlatformEndType;
     FLook: TGameLevelPlatformLook;
     FRightBlocType: TGameLevelPlatformEndType;
-    procedure SetX(const Value: cardinal);
-    procedure SetY(const Value: cardinal);
     procedure SetLook(const Value: TGameLevelPlatformLook);
     procedure SetLeftBlocType(const Value: TGameLevelPlatformEndType);
     procedure SetNbBloc(const Value: cardinal);
     procedure SetRightBlocType(const Value: TGameLevelPlatformEndType);
   protected
   public
-    property X: cardinal read FX write SetX;
-    property Y: cardinal read FY write SetY;
     property NbBloc: cardinal read FNbBloc write SetNbBloc;
     property Look: TGameLevelPlatformLook read FLook write SetLook;
     property LeftBlocType: TGameLevelPlatformEndType read FLeftBlocType
       write SetLeftBlocType;
     property RightBlocType: TGameLevelPlatformEndType read FRightBlocType
       write SetRightBlocType;
-    constructor Create; virtual;
-    procedure SaveToStream(const AStream: TStream);
-    procedure LoadFromStream(const AStream: TStream);
+    constructor Create; override;
+    procedure SaveToStream(const AStream: TStream); override;
+    procedure LoadFromStream(const AStream: TStream); override;
   end;
 
   TGameLevelPlatformList = class(TObjectList<TGameLevelPlatform>)
@@ -60,19 +76,46 @@ type
   public
     procedure SaveToStream(const AStream: TStream);
     procedure LoadFromStream(const AStream: TStream);
+    function GetNewPlatform: TGameLevelPlatform;
+  end;
+
+  TGameLevelItemType = (None, CoinBronze, CoinArgent, CoinGold);
+
+  TGameLevelItem = class(TGameLevelControl)
+  private
+    FItemType: TGameLevelItemType;
+    procedure SetItemType(const Value: TGameLevelItemType);
+  protected
+  public
+    property ItemType: TGameLevelItemType read FItemType write SetItemType;
+    procedure SaveToStream(const AStream: TStream); override;
+    procedure LoadFromStream(const AStream: TStream); override;
+    constructor Create; override;
+  end;
+
+  TGameLevelItemList = class(TObjectList<TGameLevelItem>)
+  private
+  protected
+  public
+    procedure SaveToStream(const AStream: TStream);
+    procedure LoadFromStream(const AStream: TStream);
+    function GetNewItem: TGameLevelItem;
   end;
 
   TGameLevelRoom = class
   private
     FPlatforms: TGameLevelPlatformList;
     FId: cardinal;
+    FItems: TGameLevelItemList;
     procedure SetId(const Value: cardinal);
     procedure SetPlatforms(const Value: TGameLevelPlatformList);
+    procedure SetItems(const Value: TGameLevelItemList);
   protected
   public
     property Id: cardinal read FId write SetId;
     property Platforms: TGameLevelPlatformList read FPlatforms
       write SetPlatforms;
+    property Items: TGameLevelItemList read FItems write SetItems;
     constructor Create; virtual;
     destructor Destroy; override;
     procedure SaveToStream(const AStream: TStream);
@@ -85,41 +128,37 @@ type
   public
     procedure SaveToStream(const AStream: TStream);
     procedure LoadFromStream(const AStream: TStream);
+    function LastRoomId: cardinal;
+    function GetNewRoom: TGameLevelRoom;
   end;
 
   TGameLevelDoorLook = (None, BrownUsed, Brown, GreyUsed, Grey);
 
   TGameLevelDoorDirection = (None, Back, Front);
 
-  TGameLevelDoor = class
+  TGameLevelDoor = class(TGameLevelControl)
   private
     FDirection: TGameLevelDoorDirection;
     FRoom: cardinal;
     FLook: TGameLevelDoorLook;
     FId: cardinal;
     FLinkedDoor: cardinal;
-    FX: cardinal;
-    FY: cardinal;
     procedure SetDirection(const Value: TGameLevelDoorDirection);
     procedure SetId(const Value: cardinal);
     procedure SetLinkedDoor(const Value: cardinal);
     procedure SetLook(const Value: TGameLevelDoorLook);
     procedure SetRoom(const Value: cardinal);
-    procedure SetX(const Value: cardinal);
-    procedure SetY(const Value: cardinal);
   protected
   public
     property Id: cardinal read FId write SetId;
-    property X: cardinal read FX write SetX;
-    property Y: cardinal read FY write SetY;
     property Room: cardinal read FRoom write SetRoom;
     property Look: TGameLevelDoorLook read FLook write SetLook;
     property Direction: TGameLevelDoorDirection read FDirection
       write SetDirection;
     property LinkedDoor: cardinal read FLinkedDoor write SetLinkedDoor;
-    constructor Create; virtual;
-    procedure SaveToStream(const AStream: TStream);
-    procedure LoadFromStream(const AStream: TStream);
+    constructor Create; override;
+    procedure SaveToStream(const AStream: TStream); override;
+    procedure LoadFromStream(const AStream: TStream); override;
   end;
 
   TGameLevelDoorList = class(TObjectDictionary<cardinal, TGameLevelDoor>)
@@ -128,27 +167,29 @@ type
   public
     procedure SaveToStream(const AStream: TStream);
     procedure LoadFromStream(const AStream: TStream);
+    function LastDoorId: cardinal;
+    function GetNewDoor: TGameLevelDoor;
   end;
 
   TGameLevel = class
   private
     FDoors: TGameLevelDoorList;
     FRooms: TGameLevelRoomList;
-    FStartX: cardinal;
-    FStartY: cardinal;
+    FStartX: Single;
+    FStartY: Single;
     FStartRoom: cardinal;
     FFileName: string;
     procedure SetDoors(const Value: TGameLevelDoorList);
     procedure SetRooms(const Value: TGameLevelRoomList);
     procedure SetStartRoom(const Value: cardinal);
-    procedure SetStartX(const Value: cardinal);
-    procedure SetStartY(const Value: cardinal);
+    procedure SetStartX(const Value: Single);
+    procedure SetStartY(const Value: Single);
   protected
   public
     property Rooms: TGameLevelRoomList read FRooms write SetRooms;
     property Doors: TGameLevelDoorList read FDoors write SetDoors;
-    property StartX: cardinal read FStartX write SetStartX;
-    property StartY: cardinal read FStartY write SetStartY;
+    property StartX: Single read FStartX write SetStartX;
+    property StartY: Single read FStartY write SetStartY;
     property StartRoom: cardinal read FStartRoom write SetStartRoom;
     constructor Create; virtual;
     destructor Destroy; override;
@@ -158,8 +199,6 @@ type
     procedure LoadFromFile(const AFilename: string);
     procedure Clear;
     procedure Initialize;
-    function LastRoomId: cardinal;
-    function LastDoorId: cardinal;
   end;
 
 implementation
@@ -172,9 +211,7 @@ uses
 constructor TGameLevelPlatform.Create;
 begin
   inherited;
-  FX := 0;
-  FY := 0;
-  FNbBloc := 0;
+  FNbBloc := 1;
   FLook := TGameLevelPlatformLook.None;
   FLeftBlocType := TGameLevelPlatformEndType.None;
   FRightBlocType := TGameLevelPlatformEndType.None;
@@ -182,6 +219,8 @@ end;
 
 procedure TGameLevelPlatform.LoadFromStream(const AStream: TStream);
 begin
+  inherited;
+
   // TODO : ajouter la vérification du numéro de version de cette classe
   if (AStream.Read(FNbBloc, sizeof(FNbBloc)) <> sizeof(FNbBloc)) then
     raise exception.Create('Wrong file format !');
@@ -196,23 +235,17 @@ begin
   if (AStream.Read(FRightBlocType, sizeof(FRightBlocType)) <>
     sizeof(FRightBlocType)) then
     raise exception.Create('Wrong file format !');
-
-  if (AStream.Read(FX, sizeof(FX)) <> sizeof(FX)) then
-    raise exception.Create('Wrong file format !');
-
-  if (AStream.Read(FY, sizeof(FY)) <> sizeof(FY)) then
-    raise exception.Create('Wrong file format !');
 end;
 
 procedure TGameLevelPlatform.SaveToStream(const AStream: TStream);
 begin
+  inherited;
+
   // TODO : ajouter un numéro de version pour cette classe
   AStream.Write(FNbBloc, sizeof(FNbBloc));
   AStream.Write(FLook, sizeof(FLook));
   AStream.Write(FLeftBlocType, sizeof(FLeftBlocType));
   AStream.Write(FRightBlocType, sizeof(FRightBlocType));
-  AStream.Write(FX, sizeof(FX));
-  AStream.Write(FY, sizeof(FY));
 end;
 
 procedure TGameLevelPlatform.SetLook(const Value: TGameLevelPlatformLook);
@@ -237,28 +270,20 @@ begin
   FRightBlocType := Value;
 end;
 
-procedure TGameLevelPlatform.SetX(const Value: cardinal);
-begin
-  FX := Value;
-end;
-
-procedure TGameLevelPlatform.SetY(const Value: cardinal);
-begin
-  FY := Value;
-end;
-
 { TGameLevelRoom }
 
 constructor TGameLevelRoom.Create;
 begin
   inherited;
   FPlatforms := TGameLevelPlatformList.Create;
+  FItems := TGameLevelItemList.Create;
   FId := 0;
 end;
 
 destructor TGameLevelRoom.Destroy;
 begin
-  FPlatforms.Free;
+  FItems.free;
+  FPlatforms.free;
   inherited;
 end;
 
@@ -268,6 +293,7 @@ begin
   if (AStream.Read(FId, sizeof(FId)) <> sizeof(FId)) then
     raise exception.Create('Wrong file format !');
   FPlatforms.LoadFromStream(AStream);
+  FItems.LoadFromStream(AStream);
 end;
 
 procedure TGameLevelRoom.SaveToStream(const AStream: TStream);
@@ -275,11 +301,17 @@ begin
   // TODO : ajouter un numéro de version pour cette classe
   AStream.Write(FId, sizeof(FId));
   FPlatforms.SaveToStream(AStream);
+  FItems.SaveToStream(AStream);
 end;
 
 procedure TGameLevelRoom.SetId(const Value: cardinal);
 begin
   FId := Value;
+end;
+
+procedure TGameLevelRoom.SetItems(const Value: TGameLevelItemList);
+begin
+  FItems := Value;
 end;
 
 procedure TGameLevelRoom.SetPlatforms(const Value: TGameLevelPlatformList);
@@ -297,23 +329,17 @@ begin
   FLook := TGameLevelDoorLook.None;
   FId := 0;
   FLinkedDoor := 0;
-  FX := 0;
-  FY := 0;
 end;
 
 procedure TGameLevelDoor.LoadFromStream(const AStream: TStream);
 begin
+  inherited;
+
   // TODO : ajouter la vérification du numéro de version de cette classe
   if (AStream.Read(FId, sizeof(FId)) <> sizeof(FId)) then
     raise exception.Create('Wrong file format !');
 
   if (AStream.Read(FRoom, sizeof(FRoom)) <> sizeof(FRoom)) then
-    raise exception.Create('Wrong file format !');
-
-  if (AStream.Read(FX, sizeof(FX)) <> sizeof(FX)) then
-    raise exception.Create('Wrong file format !');
-
-  if (AStream.Read(FY, sizeof(FY)) <> sizeof(FY)) then
     raise exception.Create('Wrong file format !');
 
   if (AStream.Read(FLook, sizeof(FLook)) <> sizeof(FLook)) then
@@ -329,11 +355,11 @@ end;
 
 procedure TGameLevelDoor.SaveToStream(const AStream: TStream);
 begin
+  inherited;
+
   // TODO : ajouter un numéro de version pour cette classe
   AStream.Write(FId, sizeof(FId));
   AStream.Write(FRoom, sizeof(FRoom));
-  AStream.Write(FX, sizeof(FX));
-  AStream.Write(FY, sizeof(FY));
   AStream.Write(FLook, sizeof(FLook));
   AStream.Write(FDirection, sizeof(FDirection));
   AStream.Write(FLinkedDoor, sizeof(FLinkedDoor));
@@ -364,16 +390,6 @@ begin
   FRoom := Value;
 end;
 
-procedure TGameLevelDoor.SetX(const Value: cardinal);
-begin
-  FX := Value;
-end;
-
-procedure TGameLevelDoor.SetY(const Value: cardinal);
-begin
-  FY := Value;
-end;
-
 { TGameLevel }
 
 procedure TGameLevel.Clear;
@@ -393,8 +409,8 @@ end;
 
 destructor TGameLevel.Destroy;
 begin
-  FDoors.Free;
-  FRooms.Free;
+  FDoors.free;
+  FRooms.free;
   inherited;
 end;
 
@@ -406,35 +422,19 @@ begin
   FStartRoom := 0;
 end;
 
-function TGameLevel.LastDoorId: cardinal;
-begin
-  result := 0;
-  for var Value in FDoors.Values do
-    if Value.Id > result then
-      result := Value.Id;
-end;
-
-function TGameLevel.LastRoomId: cardinal;
-begin
-  result := 0;
-  for var Value in FRooms.Values do
-    if Value.Id > result then
-      result := Value.Id;
-end;
-
 procedure TGameLevel.LoadFromFile(const AFilename: string);
 var
   fs: TFileStream;
 begin
   if tfile.Exists(AFilename) then
   begin
-    fs := TFileStream.Create(AFilename, fmInput);
+    fs := TFileStream.Create(AFilename, fmOpenRead);
     try
       Clear;
       LoadFromStream(fs);
       // TODO : ajouter le déchiffrement du fichier
     finally
-      fs.Free;
+      fs.free;
       FFileName := AFilename;
     end;
   end;
@@ -472,12 +472,12 @@ begin
   else
     LFileName := AFilename;
 
-  fs := TFileStream.Create(LFileName, fmOutput);
+  fs := TFileStream.Create(LFileName, fmCreate + fmOpenWrite);
   try
     // TODO : ajouter le chiffrement du fichier
     SaveToStream(fs);
   finally
-    fs.Free;
+    fs.free;
     FFileName := LFileName;
   end;
 end;
@@ -508,17 +508,32 @@ begin
   FStartRoom := Value;
 end;
 
-procedure TGameLevel.SetStartX(const Value: cardinal);
+procedure TGameLevel.SetStartX(const Value: Single);
 begin
   FStartX := Value;
 end;
 
-procedure TGameLevel.SetStartY(const Value: cardinal);
+procedure TGameLevel.SetStartY(const Value: Single);
 begin
   FStartY := Value;
 end;
 
 { TGameLevelDoorList }
+
+function TGameLevelDoorList.GetNewDoor: TGameLevelDoor;
+begin
+  result := TGameLevelDoor.Create;
+  result.Id := LastDoorId + 1;
+  add(result.Id, result);
+end;
+
+function TGameLevelDoorList.LastDoorId: cardinal;
+begin
+  result := 0;
+  for var Value in Values do
+    if Value.Id > result then
+      result := Value.Id;
+end;
 
 procedure TGameLevelDoorList.LoadFromStream(const AStream: TStream);
 var
@@ -528,26 +543,43 @@ begin
   // TODO : ajouter la vérification du numéro de version de cette classe
   if (AStream.Read(nb, sizeof(nb)) <> sizeof(nb)) then
     raise exception.Create('Wrong file format !');
-  for i := 0 to nb - 1 do
-  begin
-    item := TGameLevelDoor.Create;
-    item.LoadFromStream(AStream);
-    add(item.Id, item);
-  end;
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+    begin
+      item := TGameLevelDoor.Create;
+      item.LoadFromStream(AStream);
+      add(item.Id, item);
+    end;
 end;
 
 procedure TGameLevelDoorList.SaveToStream(const AStream: TStream);
 var
-  nb, i: cardinal;
+  nb: cardinal;
 begin
   // TODO : ajouter un numéro de version pour cette classe
   nb := count;
-  write(nb, sizeof(nb));
-  for i := 0 to nb - 1 do
-    items[i].SaveToStream(AStream);
+  AStream.Write(nb, sizeof(nb));
+  if nb > 0 then
+    for var Value in Values do
+      Value.SaveToStream(AStream);
 end;
 
 { TGameLevelRoomList }
+
+function TGameLevelRoomList.GetNewRoom: TGameLevelRoom;
+begin
+  result := TGameLevelRoom.Create;
+  result.Id := LastRoomId + 1;
+  add(result.Id, result);
+end;
+
+function TGameLevelRoomList.LastRoomId: cardinal;
+begin
+  result := 0;
+  for var Value in Values do
+    if Value.Id > result then
+      result := Value.Id;
+end;
 
 procedure TGameLevelRoomList.LoadFromStream(const AStream: TStream);
 var
@@ -557,26 +589,34 @@ begin
   // TODO : ajouter la vérification du numéro de version de cette classe
   if (AStream.Read(nb, sizeof(nb)) <> sizeof(nb)) then
     raise exception.Create('Wrong file format !');
-  for i := 0 to nb - 1 do
-  begin
-    item := TGameLevelRoom.Create;
-    item.LoadFromStream(AStream);
-    add(item.Id, item);
-  end;
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+    begin
+      item := TGameLevelRoom.Create;
+      item.LoadFromStream(AStream);
+      add(item.Id, item);
+    end;
 end;
 
 procedure TGameLevelRoomList.SaveToStream(const AStream: TStream);
 var
-  nb, i: cardinal;
+  nb: cardinal;
 begin
   // TODO : ajouter un numéro de version pour cette classe
   nb := count;
-  write(nb, sizeof(nb));
-  for i := 0 to nb - 1 do
-    items[i].SaveToStream(AStream);
+  AStream.Write(nb, sizeof(nb));
+  if nb > 0 then
+    for var Value in Values do
+      Value.SaveToStream(AStream);
 end;
 
 { TGameLevelPlatformList }
+
+function TGameLevelPlatformList.GetNewPlatform: TGameLevelPlatform;
+begin
+  result := TGameLevelPlatform.Create;
+  add(result);
+end;
 
 procedure TGameLevelPlatformList.LoadFromStream(const AStream: TStream);
 var
@@ -586,12 +626,13 @@ begin
   // TODO : ajouter la vérification du numéro de version de cette classe
   if (AStream.Read(nb, sizeof(nb)) <> sizeof(nb)) then
     raise exception.Create('Wrong file format !');
-  for i := 0 to nb - 1 do
-  begin
-    item := TGameLevelPlatform.Create;
-    item.LoadFromStream(AStream);
-    add(item);
-  end;
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+    begin
+      item := TGameLevelPlatform.Create;
+      item.LoadFromStream(AStream);
+      add(item);
+    end;
 end;
 
 procedure TGameLevelPlatformList.SaveToStream(const AStream: TStream);
@@ -600,9 +641,113 @@ var
 begin
   // TODO : ajouter un numéro de version pour cette classe
   nb := count;
-  write(nb, sizeof(nb));
-  for i := 0 to nb - 1 do
-    items[i].SaveToStream(AStream);
+  AStream.Write(nb, sizeof(nb));
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+      Items[i].SaveToStream(AStream);
+end;
+
+{ TGameLevelItem }
+
+constructor TGameLevelItem.Create;
+begin
+  inherited;
+  FItemType := TGameLevelItemType.None;
+end;
+
+procedure TGameLevelItem.LoadFromStream(const AStream: TStream);
+begin
+  inherited;
+
+  // TODO : ajouter la vérification du numéro de version de cette classe
+  if (AStream.Read(FItemType, sizeof(FItemType)) <> sizeof(FItemType)) then
+    raise exception.Create('Wrong file format !');
+end;
+
+procedure TGameLevelItem.SaveToStream(const AStream: TStream);
+begin
+  inherited;
+
+  // TODO : ajouter un numéro de version pour cette classe
+  AStream.Write(FItemType, sizeof(FItemType));
+end;
+
+procedure TGameLevelItem.SetItemType(const Value: TGameLevelItemType);
+begin
+  FItemType := Value;
+end;
+
+{ TGameLevelItemList }
+
+function TGameLevelItemList.GetNewItem: TGameLevelItem;
+begin
+  result := TGameLevelItem.Create;
+  add(result);
+end;
+
+procedure TGameLevelItemList.LoadFromStream(const AStream: TStream);
+var
+  nb, i: cardinal;
+  item: TGameLevelItem;
+begin
+  // TODO : ajouter la vérification du numéro de version de cette classe
+  if (AStream.Read(nb, sizeof(nb)) <> sizeof(nb)) then
+    raise exception.Create('Wrong file format !');
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+    begin
+      item := TGameLevelItem.Create;
+      item.LoadFromStream(AStream);
+      add(item);
+    end;
+end;
+
+procedure TGameLevelItemList.SaveToStream(const AStream: TStream);
+var
+  nb, i: cardinal;
+begin
+  // TODO : ajouter un numéro de version pour cette classe
+  nb := count;
+  AStream.Write(nb, sizeof(nb));
+  if nb > 0 then
+    for i := 0 to nb - 1 do
+      Items[i].SaveToStream(AStream);
+end;
+
+{ TGameLevelControl }
+
+constructor TGameLevelControl.Create;
+begin
+  inherited;
+  FX := 0;
+  FY := 0;
+end;
+
+procedure TGameLevelControl.LoadFromStream(const AStream: TStream);
+begin
+  // TODO : ajouter la vérification du numéro de version de cette classe
+  if (AStream.Read(FX, sizeof(FX)) <> sizeof(FX)) then
+    raise exception.Create('Wrong file format !');
+
+  if (AStream.Read(FY, sizeof(FY)) <> sizeof(FY)) then
+    raise exception.Create('Wrong file format !');
+end;
+
+procedure TGameLevelControl.SaveToStream(const AStream: TStream);
+begin
+  // TODO : ajouter un numéro de version pour cette classe
+  AStream.Write(FX, sizeof(FX));
+  AStream.Write(FY, sizeof(FY));
+end;
+
+procedure TGameLevelControl.SetX(const Value: Single);
+begin
+  FX := Value;
+end;
+
+procedure TGameLevelControl.SetY(const Value: Single);
+begin
+  FY := Value;
 end;
 
 end.

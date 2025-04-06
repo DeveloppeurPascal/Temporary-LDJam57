@@ -47,11 +47,21 @@ type
       const Point: TPointF);
     procedure RoomDragOver(Sender: TObject; const Data: TDragObject;
       const Point: TPointF; var Operation: TDragOperation);
+    procedure FormDestroy(Sender: TObject);
+    procedure btnAddRoomClick(Sender: TObject);
+    procedure btnDeleteRoomClick(Sender: TObject);
+    procedure btnPrevRoomClick(Sender: TObject);
+    procedure btnNetxRoomClick(Sender: TObject);
+    procedure btnSaveClick(Sender: TObject);
   private
     FSelectedSprite: TSprite;
     FSelectedGlowEffect: TGlowEffect;
+    FCurrentRoom: TGameLevelRoom;
+    procedure SetCurrentRoom(const Value: TGameLevelRoom);
   protected
     DragStartX, DragStartY: Single;
+    CurrentGameLevel: TGameLevel;
+    property CurrentRoom: TGameLevelRoom read FCurrentRoom write SetCurrentRoom;
     procedure CalcBottomPanelHeight;
     procedure FillBottomPanel;
     /// <summary>
@@ -60,16 +70,22 @@ type
     procedure SelectSprite(Sender: TObject);
     procedure ItemMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
   public
-    procedure AddItemToRoom(const Source: TSprite; const X, Y: Single);
-    procedure AddDoor(const Parent: TFMXObject; const Look: TGameLevelDoorLook;
-      const IsInRoom: boolean = false; const X: Single = 0;
-      const Y: Single = 0);
-    procedure AddPlatform(const Parent: TFMXObject;
+    function AddDoor(const Parent: TFMXObject; const Look: TGameLevelDoorLook;
+      const IsInRoom: boolean = false; const X: Single = 0; const Y: Single = 0;
+      const GameLevelDoor: TGameLevelDoor = nil): TDoorSprite;
+    function AddPlatform(const Parent: TFMXObject;
       const Look: TGameLevelPlatformLook; const IsInRoom: boolean = false;
-      const X: Single = 0; const Y: Single = 0);
-    procedure AddPlayer(const Parent: TFMXObject;
-      const IsInRoom: boolean = false; const X: Single = 0;
-      const Y: Single = 0);
+      const X: Single = 0; const Y: Single = 0;
+      const GameLevelPlatform: TGameLevelPlatform = nil): TPlatformSprite;
+    function AddPlayer(const Parent: TFMXObject;
+      const IsInRoom: boolean = false; const X: Single = 0; const Y: Single = 0)
+      : TPlayerSprite;
+    function AddItem(const Parent: TFMXObject;
+      const ItemType: TGameLevelItemType; const IsInRoom: boolean = false;
+      const X: Single = 0; const Y: Single = 0;
+      const GameLevelItem: TGameLevelItem = nil): TItemSprite;
+    procedure ShowCurrentRoom;
+    procedure AddARoom;
   end;
 
 var
@@ -86,106 +102,184 @@ uses
   uSVGBitmapManager_InputPrompts,
   USVGPlatformerAssetsBase;
 
-procedure TfrmMain.AddDoor(const Parent: TFMXObject;
-  const Look: TGameLevelDoorLook; const IsInRoom: boolean; const X, Y: Single);
-var
-  Sprite: TDoorSprite;
+procedure TfrmMain.AddARoom;
 begin
-  Sprite := TDoorSprite.Create(self);
-  Sprite.BeginUpdate;
+  CurrentRoom := CurrentGameLevel.Rooms.GetNewRoom;
+end;
+
+function TfrmMain.AddDoor(const Parent: TFMXObject;
+  const Look: TGameLevelDoorLook; const IsInRoom: boolean; const X, Y: Single;
+  const GameLevelDoor: TGameLevelDoor): TDoorSprite;
+begin
+  if assigned(GameLevelDoor) then
+    GameLevelDoor.Room := CurrentRoom.id;
+
+  Result := TDoorSprite.Create(self, GameLevelDoor);
+  Result.BeginUpdate;
   try
-    Sprite.Margins.Bottom := 5;
-    Sprite.Margins.right := 5;
-    Sprite.Look := Look;
-    Sprite.Position.X := X;
-    Sprite.Position.Y := Y;
+    Result.Look := Look;
+    Result.X := X;
+    Result.Y := Y;
     if IsInRoom then
     begin
-      Sprite.Direction := TGameLevelDoorDirection.back;
-      Sprite.DragMode := TDragMode.dmAutomatic;
-      Sprite.OnMouseMove := ItemMouseMove;
+      Result.Direction := TGameLevelDoorDirection.back;
+      Result.DragMode := TDragMode.dmAutomatic;
+      Result.OnMouseMove := ItemMouseMove;
     end
     else
     begin
-      Sprite.Direction := TGameLevelDoorDirection.none;
-      Sprite.DragMode := TDragMode.dmManual;
-      Sprite.onclick := SelectSprite;
+      Result.Direction := TGameLevelDoorDirection.none;
+      Result.DragMode := TDragMode.dmManual;
+      Result.onclick := SelectSprite;
+      Result.Margins.Bottom := 5;
+      Result.Margins.right := 5;
     end;
-    Sprite.Parent := Parent;
+    Result.Parent := Parent;
   finally
-    Sprite.EndUpdate;
+    Result.EndUpdate;
   end;
 end;
 
-procedure TfrmMain.AddItemToRoom(const Source: TSprite; const X, Y: Single);
+function TfrmMain.AddItem(const Parent: TFMXObject;
+  const ItemType: TGameLevelItemType; const IsInRoom: boolean;
+  const X, Y: Single; const GameLevelItem: TGameLevelItem): TItemSprite;
 begin
-  if Source is TDoorSprite then
-    AddDoor(sbRoom, (Source as TDoorSprite).Look, true, X, Y)
-  else if Source is TPlatformSprite then
-    AddPlatform(sbRoom, (Source as TPlatformSprite).Look, true, X, Y)
-  else if Source is TPlayerSprite then
-    AddPlayer(sbRoom, true, X, Y)
-  else
-    raise Exception.Create('Unknown sprite type.');
+  Result := TItemSprite.Create(self, GameLevelItem);
+  Result.BeginUpdate;
+  try
+    Result.ItemType := ItemType;
+    Result.X := X;
+    Result.Y := Y;
+    if IsInRoom then
+    begin
+      Result.DragMode := TDragMode.dmAutomatic;
+      Result.OnMouseMove := ItemMouseMove;
+    end
+    else
+    begin
+      Result.DragMode := TDragMode.dmManual;
+      Result.onclick := SelectSprite;
+      Result.Margins.Bottom := 5;
+      Result.Margins.right := 5;
+    end;
+    Result.Parent := Parent;
+  finally
+    Result.EndUpdate;
+  end;
 end;
 
-procedure TfrmMain.AddPlatform(const Parent: TFMXObject;
+function TfrmMain.AddPlatform(const Parent: TFMXObject;
   const Look: TGameLevelPlatformLook; const IsInRoom: boolean;
-  const X, Y: Single);
-var
-  Sprite: TPlatformSprite;
+  const X, Y: Single; const GameLevelPlatform: TGameLevelPlatform)
+  : TPlatformSprite;
 begin
-  Sprite := TPlatformSprite.Create(self);
-  Sprite.BeginUpdate;
+  Result := TPlatformSprite.Create(self, GameLevelPlatform);
+  Result.BeginUpdate;
   try
-    Sprite.Margins.Bottom := 5;
-    Sprite.Margins.right := 5;
-    Sprite.Look := Look;
-    Sprite.Position.X := X;
-    Sprite.Position.Y := Y;
+    Result.Look := Look;
+    Result.X := X;
+    Result.Y := Y;
     if IsInRoom then
     begin
-      Sprite.DragMode := TDragMode.dmAutomatic;
-      Sprite.OnMouseMove := ItemMouseMove;
-      sprite.NbBloc := random(10);
+      Result.DragMode := TDragMode.dmAutomatic;
+      Result.OnMouseMove := ItemMouseMove;
     end
     else
     begin
-      Sprite.DragMode := TDragMode.dmManual;
-      Sprite.onclick := SelectSprite;
+      Result.DragMode := TDragMode.dmManual;
+      Result.onclick := SelectSprite;
+      Result.Margins.Bottom := 5;
+      Result.Margins.right := 5;
     end;
-    Sprite.Parent := Parent;
+    Result.Parent := Parent;
   finally
-    Sprite.EndUpdate;
+    Result.EndUpdate;
   end;
 end;
 
-procedure TfrmMain.AddPlayer(const Parent: TFMXObject; const IsInRoom: boolean;
-  const X, Y: Single);
-var
-  Sprite: TPlayerSprite;
+function TfrmMain.AddPlayer(const Parent: TFMXObject; const IsInRoom: boolean;
+  const X, Y: Single): TPlayerSprite;
 begin
-  Sprite := TPlayerSprite.Create(self);
-  Sprite.BeginUpdate;
+  Result := TPlayerSprite.Create(self, nil); // TODO PP
+  Result.BeginUpdate;
   try
-    Sprite.Margins.Bottom := 5;
-    Sprite.Margins.right := 5;
-    Sprite.Position.X := X;
-    Sprite.Position.Y := Y;
+    Result.X := X;
+    Result.Y := Y;
     if IsInRoom then
     begin
-      Sprite.DragMode := TDragMode.dmAutomatic;
-      Sprite.OnMouseMove := ItemMouseMove;
+      Result.DragMode := TDragMode.dmAutomatic;
+      Result.OnMouseMove := ItemMouseMove;
+      CurrentGameLevel.StartX := X;
+      CurrentGameLevel.StartY := Y;
+      CurrentGameLevel.StartRoom := CurrentRoom.id;
     end
     else
     begin
-      Sprite.DragMode := TDragMode.dmManual;
-      Sprite.onclick := SelectSprite;
+      Result.DragMode := TDragMode.dmManual;
+      Result.onclick := SelectSprite;
+      Result.Margins.Bottom := 5;
+      Result.Margins.right := 5;
     end;
-    Sprite.Parent := Parent;
+    Result.Parent := Parent;
   finally
-    Sprite.EndUpdate;
+    Result.EndUpdate;
   end;
+end;
+
+procedure TfrmMain.btnAddRoomClick(Sender: TObject);
+begin
+  AddARoom;
+end;
+
+procedure TfrmMain.btnDeleteRoomClick(Sender: TObject);
+begin
+  ShowMessage('not implemented');
+  // TODO : à compléter
+end;
+
+procedure TfrmMain.btnNetxRoomClick(Sender: TObject);
+var
+  NewRoomId: cardinal;
+  Room: TGameLevelRoom;
+begin
+  if not assigned(CurrentGameLevel) then
+    exit;
+
+  NewRoomId := high(cardinal);
+  for Room in CurrentGameLevel.Rooms.Values do
+    if (Room.id > CurrentRoom.id) and (Room.id < NewRoomId) then
+      NewRoomId := Room.id;
+
+  if (NewRoomId < high(cardinal)) and CurrentGameLevel.Rooms.TryGetValue
+    (NewRoomId, Room) then
+    CurrentRoom := Room;
+end;
+
+procedure TfrmMain.btnPrevRoomClick(Sender: TObject);
+var
+  NewRoomId: cardinal;
+  Room: TGameLevelRoom;
+begin
+  if not assigned(CurrentGameLevel) then
+    exit;
+
+  NewRoomId := 0;
+  for Room in CurrentGameLevel.Rooms.Values do
+    if (Room.id < CurrentRoom.id) and (Room.id > NewRoomId) then
+      NewRoomId := Room.id;
+
+  if (NewRoomId > 0) and CurrentGameLevel.Rooms.TryGetValue(NewRoomId, Room)
+  then
+    CurrentRoom := Room;
+end;
+
+procedure TfrmMain.btnSaveClick(Sender: TObject);
+begin
+  if not assigned(CurrentGameLevel) then
+    exit;
+
+  CurrentGameLevel.SaveToFile(CDefaultLevelFilePath);
+  ShowMessage('Game level saved');
 end;
 
 procedure TfrmMain.CalcBottomPanelHeight;
@@ -227,6 +321,11 @@ begin
   // Player
   AddPlayer(flBottom);
 
+  // "dead" items
+  AddItem(flBottom, TGameLevelItemType.CoinBronze);
+  AddItem(flBottom, TGameLevelItemType.CoinArgent);
+  AddItem(flBottom, TGameLevelItemType.CoinGold);
+
   CalcBottomPanelHeight;
 end;
 
@@ -234,7 +333,10 @@ procedure TfrmMain.FormCreate(Sender: TObject);
 begin
   FSelectedSprite := nil;
   FSelectedGlowEffect := TGlowEffect.Create(self);
+  CurrentGameLevel := TGameLevel.Create;
+  CurrentRoom := nil;
 
+  // Draw the screen (background + selector panel)
   tthread.ForceQueue(nil,
     procedure
     begin
@@ -251,6 +353,30 @@ begin
         Parent := sbRoom;
       end;
     end);
+
+  // Load default game level and show it
+  tthread.ForceQueue(nil,
+    procedure
+    var
+      Room: TGameLevelRoom;
+    begin
+      CurrentGameLevel.LoadFromFile(CDefaultLevelFilePath);
+      if CurrentGameLevel.Rooms.Count < 1 then
+        AddARoom
+      else if CurrentGameLevel.Rooms.TryGetValue(CurrentGameLevel.StartRoom,
+        Room) then
+        CurrentRoom := Room
+      else if CurrentGameLevel.Rooms.TryGetValue
+        (CurrentGameLevel.Rooms.LastRoomId, Room) then
+        CurrentRoom := Room
+      else
+        raise Exception.Create('No room to show !');
+    end);
+end;
+
+procedure TfrmMain.FormDestroy(Sender: TObject);
+begin
+  CurrentGameLevel.Free;
 end;
 
 procedure TfrmMain.FormResize(Sender: TObject);
@@ -278,8 +404,14 @@ begin
     Dest := Sender as TScrollBox;
     Source.BeginUpdate;
     try
-      Source.Position.X := Point.X + Dest.ViewportPosition.X - DragStartX;
-      Source.Position.Y := Point.Y + Dest.ViewportPosition.Y - DragStartY;
+      Source.X := Point.X + Dest.ViewportPosition.X - DragStartX;
+      Source.Y := Point.Y + Dest.ViewportPosition.Y - DragStartY;
+      if Source is TPlayerSprite then
+      begin
+        CurrentGameLevel.StartX := Source.X;
+        CurrentGameLevel.StartY := Source.Y;
+        CurrentGameLevel.StartRoom := CurrentRoom.id;
+      end;
     finally
       Source.EndUpdate;
     end;
@@ -298,6 +430,7 @@ procedure TfrmMain.sbRoomMouseDown(Sender: TObject; Button: TMouseButton;
 Shift: TShiftState; X, Y: Single);
 var
   Dest: TScrollBox;
+  LX, LY: Single;
 begin
   if assigned(Sender) and (Sender is TScrollBox) then
     Dest := Sender as TScrollBox
@@ -307,8 +440,22 @@ begin
   if not assigned(FSelectedSprite) then
     exit;
 
-  AddItemToRoom(FSelectedSprite, X + Dest.ViewportPosition.X - DragStartX,
-    Y + Dest.ViewportPosition.Y - DragStartY);
+  LX := X + Dest.ViewportPosition.X - DragStartX;
+  LY := Y + Dest.ViewportPosition.Y - DragStartY;
+
+  if FSelectedSprite is TDoorSprite then
+    AddDoor(sbRoom, (FSelectedSprite as TDoorSprite).Look, true, LX, LY,
+      CurrentGameLevel.Doors.GetNewDoor)
+  else if FSelectedSprite is TPlatformSprite then
+    AddPlatform(sbRoom, (FSelectedSprite as TPlatformSprite).Look, true, LX, LY,
+      CurrentRoom.Platforms.GetNewPlatform)
+  else if FSelectedSprite is TPlayerSprite then
+    AddPlayer(sbRoom, true, LX, LY) // TODOPP
+  else if FSelectedSprite is TItemSprite then
+    AddItem(sbRoom, (FSelectedSprite as TItemSprite).ItemType, true, LX, LY,
+      CurrentRoom.Items.GetNewItem)
+  else
+    raise Exception.Create('Unknown sprite type.');
 end;
 
 procedure TfrmMain.SelectSprite(Sender: TObject);
@@ -331,5 +478,53 @@ begin
     end;
   end;
 end;
+
+procedure TfrmMain.SetCurrentRoom(const Value: TGameLevelRoom);
+begin
+  if not assigned(CurrentGameLevel) then
+    exit;
+
+  FCurrentRoom := Value;
+  ShowCurrentRoom;
+end;
+
+procedure TfrmMain.ShowCurrentRoom;
+var
+  I: integer;
+begin
+  while sbRoom.Content.ChildrenCount > 0 do
+    sbRoom.Content.Children[0].Free;
+
+  if not assigned(CurrentGameLevel) then
+    exit;
+
+  if not assigned(CurrentRoom) then
+    exit;
+
+  for var Value in CurrentGameLevel.Doors.Values do
+    if Value.Room = CurrentRoom.id then
+      AddDoor(sbRoom, Value.Look, true, Value.X, Value.Y, Value);
+
+  for I := 0 to CurrentRoom.Platforms.Count - 1 do
+    AddPlatform(sbRoom, CurrentRoom.Platforms[I].Look, true,
+      CurrentRoom.Platforms[I].X, CurrentRoom.Platforms[I].Y,
+      CurrentRoom.Platforms[I]);
+
+  for I := 0 to CurrentRoom.Items.Count - 1 do
+    AddItem(sbRoom, CurrentRoom.Items[I].ItemType, true, CurrentRoom.Items[I].X,
+      CurrentRoom.Items[I].Y, CurrentRoom.Items[I]);
+
+  if CurrentGameLevel.StartRoom = CurrentRoom.id then
+    AddPlayer(sbRoom, true, CurrentGameLevel.StartX, CurrentGameLevel.StartY);
+
+  lblRooms.Text := 'Current room';
+  lblRoomId.Text := CurrentRoom.id.ToString;
+end;
+
+initialization
+
+{$IFDEF DEBUG}
+  ReportMemoryLeaksOnShutdown := true;
+{$ENDIF}
 
 end.
