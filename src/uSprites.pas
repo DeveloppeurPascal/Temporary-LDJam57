@@ -122,6 +122,7 @@ implementation
 
 uses
   System.Types,
+  System.UITypes,
   System.SysUtils,
   Olf.Skia.SVGToBitmap,
   USVGDoors,
@@ -273,6 +274,7 @@ begin
     WrapMode := TImageWrapMode.Original;
     Width := CDefaultSpriteSize * FNbBloc;
     Bitmap.SetSize(trunc(Width * BitmapScale), trunc(height * BitmapScale));
+    Bitmap.Clear(talphacolors.Null);
     if FNbBloc = 1 then
       Bitmap.Assign(TOlfSVGBitmapList.Bitmap(TSVGPlatformerAssetsBase.tag + SVG,
         CDefaultSpriteSize, CDefaultSpriteSize, BitmapScale))

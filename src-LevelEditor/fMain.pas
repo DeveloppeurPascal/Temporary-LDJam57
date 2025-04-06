@@ -19,7 +19,9 @@ uses
   FMX.Objects,
   FMX.Effects,
   uSprites,
-  uGameLevel;
+  uGameLevel,
+  FMX.ListBox,
+  FMX.Edit;
 
 type
   TfrmMain = class(TForm)
@@ -39,6 +41,30 @@ type
     flBottom: TFlowLayout;
     BackgroundWall: TRectangle;
     sbRoom: TScrollBox;
+    pnlDoors: TPanel;
+    lblDoors: TLabel;
+    pnlPlatforms: TPanel;
+    lblPlatforms: TLabel;
+    gplPlatforms: TGridPanelLayout;
+    Layout1: TLayout;
+    Layout2: TLayout;
+    Layout3: TLayout;
+    lblPlatformNbBlocks: TLabel;
+    lblPlatformLeftBlock: TLabel;
+    lblPlatformRightBlock: TLabel;
+    edtPlatformNbBlocks: TEdit;
+    rbPlatformLeftBloc: TRadioButton;
+    rbPlatformLeftCliff: TRadioButton;
+    rbPlatformRightBloc: TRadioButton;
+    rbPlatformRightCliff: TRadioButton;
+    GridPanelLayout3: TGridPanelLayout;
+    Layout4: TLayout;
+    Layout5: TLayout;
+    lblDoorDirection: TLabel;
+    lblDoorLinked: TLabel;
+    cbDoorLinkedDoor: TComboBox;
+    rbDoorDirectionFront: TRadioButton;
+    rbDoorDirectionBack: TRadioButton;
     procedure FormResize(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure sbRoomMouseDown(Sender: TObject; Button: TMouseButton;
@@ -53,10 +79,19 @@ type
     procedure btnPrevRoomClick(Sender: TObject);
     procedure btnNetxRoomClick(Sender: TObject);
     procedure btnSaveClick(Sender: TObject);
+    procedure edtPlatformNbBlocksChange(Sender: TObject);
+    procedure rbPlatformLeftBlocChange(Sender: TObject);
+    procedure rbPlatformLeftCliffChange(Sender: TObject);
+    procedure rbPlatformRightBlocChange(Sender: TObject);
+    procedure rbPlatformRightCliffChange(Sender: TObject);
+    procedure rbDoorDirectionFrontChange(Sender: TObject);
+    procedure rbDoorDirectionBackChange(Sender: TObject);
+    procedure cbDoorLinkedDoorChange(Sender: TObject);
   private
     FSelectedSprite: TSprite;
     FSelectedGlowEffect: TGlowEffect;
     FCurrentRoom: TGameLevelRoom;
+    BlocCbDoorChange: boolean;
     procedure SetCurrentRoom(const Value: TGameLevelRoom);
   protected
     DragStartX, DragStartY: Single;
@@ -69,6 +104,7 @@ type
     /// </summary>
     procedure SelectSprite(Sender: TObject);
     procedure ItemMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
+    procedure ClickOnSpriteInfoButton(Sender: TObject);
   public
     function AddDoor(const Parent: TFMXObject; const Look: TGameLevelDoorLook;
       const IsInRoom: boolean = false; const X: Single = 0; const Y: Single = 0;
@@ -85,7 +121,11 @@ type
       const X: Single = 0; const Y: Single = 0;
       const GameLevelItem: TGameLevelItem = nil): TItemSprite;
     procedure ShowCurrentRoom;
+    procedure HideToolBarPanels;
     procedure AddARoom;
+    procedure ShowPanelDoor(const ADoor: TDoorSprite);
+    procedure ShowPanelPlatform(const APlatform: TPlatformSprite);
+    procedure AddInfoButton(const AParent: TSprite);
   end;
 
 var
@@ -125,12 +165,13 @@ begin
       Result.Direction := TGameLevelDoorDirection.back;
       Result.DragMode := TDragMode.dmAutomatic;
       Result.OnMouseMove := ItemMouseMove;
+      AddInfoButton(Result);
     end
     else
     begin
       Result.Direction := TGameLevelDoorDirection.none;
       Result.DragMode := TDragMode.dmManual;
-      Result.onclick := SelectSprite;
+      Result.OnClick := SelectSprite;
       Result.Margins.Bottom := 5;
       Result.Margins.right := 5;
     end;
@@ -138,6 +179,22 @@ begin
   finally
     Result.EndUpdate;
   end;
+end;
+
+procedure TfrmMain.AddInfoButton(const AParent: TSprite);
+var
+  btn: TButton;
+begin
+  btn := TButton.Create(self);
+  btn.width := 20;
+  btn.Height := 20;
+  btn.Text := '?';
+  btn.OnClick := ClickOnSpriteInfoButton;
+  btn.Anchors := [TAnchorKind.akRight, TAnchorKind.akTop];
+  btn.Position.X := -btn.width;
+  btn.Position.Y := 0;
+  btn.TagObject := AParent;
+  btn.Parent := AParent;
 end;
 
 function TfrmMain.AddItem(const Parent: TFMXObject;
@@ -158,7 +215,7 @@ begin
     else
     begin
       Result.DragMode := TDragMode.dmManual;
-      Result.onclick := SelectSprite;
+      Result.OnClick := SelectSprite;
       Result.Margins.Bottom := 5;
       Result.Margins.right := 5;
     end;
@@ -183,11 +240,12 @@ begin
     begin
       Result.DragMode := TDragMode.dmAutomatic;
       Result.OnMouseMove := ItemMouseMove;
+      AddInfoButton(Result);
     end
     else
     begin
       Result.DragMode := TDragMode.dmManual;
-      Result.onclick := SelectSprite;
+      Result.OnClick := SelectSprite;
       Result.Margins.Bottom := 5;
       Result.Margins.right := 5;
     end;
@@ -200,7 +258,8 @@ end;
 function TfrmMain.AddPlayer(const Parent: TFMXObject; const IsInRoom: boolean;
   const X, Y: Single): TPlayerSprite;
 begin
-  Result := TPlayerSprite.Create(self, nil); // TODO PP
+  // TODO : lors de l'ajout s'assurer qu'un player n'est pas déjà sur le même salle et le masque (ou le déplacer) si c'est le cas
+  Result := TPlayerSprite.Create(self, nil);
   Result.BeginUpdate;
   try
     Result.X := X;
@@ -216,7 +275,7 @@ begin
     else
     begin
       Result.DragMode := TDragMode.dmManual;
-      Result.onclick := SelectSprite;
+      Result.OnClick := SelectSprite;
       Result.Margins.Bottom := 5;
       Result.Margins.right := 5;
     end;
@@ -293,10 +352,78 @@ begin
     if (flBottom.Children[I] is tControl) then
     begin
       C := flBottom.Children[I] as tControl;
-      if H < C.Position.Y + C.height + C.Margins.Bottom then
-        H := C.Position.Y + C.height + C.Margins.Bottom;
+      if H < C.Position.Y + C.Height + C.Margins.Bottom then
+        H := C.Position.Y + C.Height + C.Margins.Bottom;
     end;
-  flBottom.height := H;
+  flBottom.Height := H;
+end;
+
+procedure TfrmMain.cbDoorLinkedDoorChange(Sender: TObject);
+var
+  CurDoor, Door: TGameLevelDoor;
+  OldLinkId, NewLinkId: cardinal;
+begin
+  if BlocCbDoorChange then
+    exit;
+
+  if not assigned(pnlDoors.TagObject) then
+    exit;
+  if not(pnlDoors.TagObject is TDoorSprite) then
+    exit;
+  if not assigned((pnlDoors.TagObject as TDoorSprite).GameLevelControl) then
+    exit;
+  if not((pnlDoors.TagObject as TDoorSprite).GameLevelControl is TGameLevelDoor)
+  then
+    exit;
+
+  CurDoor := (pnlDoors.TagObject as TDoorSprite)
+    .GameLevelControl as TGameLevelDoor;
+
+  OldLinkId := ((pnlDoors.TagObject as TDoorSprite)
+    .GameLevelControl as TGameLevelDoor).LinkedDoor;
+
+  if (cbDoorLinkedDoor.ItemIndex >= 0) and
+    assigned(cbDoorLinkedDoor.ListItems[cbDoorLinkedDoor.ItemIndex].TagObject)
+    and (cbDoorLinkedDoor.ListItems[cbDoorLinkedDoor.ItemIndex]
+    .TagObject is TGameLevelDoor) then
+    NewLinkId := (cbDoorLinkedDoor.ListItems[cbDoorLinkedDoor.ItemIndex]
+      .TagObject as TGameLevelDoor).id
+  else
+    NewLinkId := 0;
+
+  if NewLinkId = OldLinkId then
+    exit;
+
+  // Old linked door from our door
+  if CurrentGameLevel.Doors.TryGetValue(OldLinkId, Door) then
+    Door.LinkedDoor := 0;
+
+  if CurrentGameLevel.Doors.TryGetValue(NewLinkId, Door) then
+  begin
+    OldLinkId := Door.LinkedDoor;
+    Door.LinkedDoor := CurDoor.id;
+  end
+  else
+    exit;
+
+  CurDoor.LinkedDoor := Door.id;
+
+  // Old linked door from new linked door
+  if CurrentGameLevel.Doors.TryGetValue(OldLinkId, Door) then
+    Door.LinkedDoor := 0;
+end;
+
+procedure TfrmMain.edtPlatformNbBlocksChange(Sender: TObject);
+var
+  nb: integer;
+begin
+  try
+    nb := edtPlatformNbBlocks.Text.ToInteger;
+    if (nb > 0) and (nb < 50) and assigned(pnlPlatforms.TagObject) and
+      (pnlPlatforms.TagObject is TPlatformSprite) then
+      (pnlPlatforms.TagObject as TPlatformSprite).NbBloc := nb;
+  except
+  end;
 end;
 
 procedure TfrmMain.FillBottomPanel;
@@ -335,6 +462,7 @@ begin
   FSelectedGlowEffect := TGlowEffect.Create(self);
   CurrentGameLevel := TGameLevel.Create;
   CurrentRoom := nil;
+  BlocCbDoorChange := false;
 
   // Draw the screen (background + selector panel)
   tthread.ForceQueue(nil,
@@ -347,7 +475,7 @@ begin
       with TRectangle.Create(self) do
       begin
         width := 1;
-        height := 1;
+        Height := 1;
         Position.X := 10000;
         Position.Y := 10000;
         Parent := sbRoom;
@@ -384,11 +512,84 @@ begin
   CalcBottomPanelHeight;
 end;
 
+procedure TfrmMain.HideToolBarPanels;
+begin
+  pnlDoors.Visible := false;
+  pnlPlatforms.Visible := false;
+end;
+
 procedure TfrmMain.ItemMouseMove(Sender: TObject; Shift: TShiftState;
 X, Y: Single);
 begin
   DragStartX := X;
   DragStartY := Y;
+end;
+
+procedure TfrmMain.rbDoorDirectionBackChange(Sender: TObject);
+begin
+  if rbDoorDirectionBack.IsChecked and assigned(pnlDoors.TagObject) and
+    (pnlDoors.TagObject is TDoorSprite) then
+    (pnlDoors.TagObject as TDoorSprite).Direction :=
+      TGameLevelDoorDirection.back;
+end;
+
+procedure TfrmMain.rbDoorDirectionFrontChange(Sender: TObject);
+begin
+  if rbDoorDirectionFront.IsChecked and assigned(pnlDoors.TagObject) and
+    (pnlDoors.TagObject is TDoorSprite) then
+    (pnlDoors.TagObject as TDoorSprite).Direction :=
+      TGameLevelDoorDirection.Front;
+end;
+
+procedure TfrmMain.rbPlatformLeftBlocChange(Sender: TObject);
+begin
+  if rbPlatformLeftBloc.IsChecked and assigned(pnlPlatforms.TagObject) and
+    (pnlPlatforms.TagObject is TPlatformSprite) then
+    (pnlPlatforms.TagObject as TPlatformSprite).LeftBlocType :=
+      TGameLevelPlatformEndType.Bloc;
+end;
+
+procedure TfrmMain.rbPlatformLeftCliffChange(Sender: TObject);
+begin
+  if rbPlatformLeftCliff.IsChecked and assigned(pnlPlatforms.TagObject) and
+    (pnlPlatforms.TagObject is TPlatformSprite) then
+    (pnlPlatforms.TagObject as TPlatformSprite).LeftBlocType :=
+      TGameLevelPlatformEndType.Cliff;
+end;
+
+procedure TfrmMain.rbPlatformRightBlocChange(Sender: TObject);
+begin
+  if rbPlatformRightBloc.IsChecked and assigned(pnlPlatforms.TagObject) and
+    (pnlPlatforms.TagObject is TPlatformSprite) then
+    (pnlPlatforms.TagObject as TPlatformSprite).RightBlocType :=
+      TGameLevelPlatformEndType.Bloc;
+end;
+
+procedure TfrmMain.rbPlatformRightCliffChange(Sender: TObject);
+begin
+  if rbPlatformRightCliff.IsChecked and assigned(pnlPlatforms.TagObject) and
+    (pnlPlatforms.TagObject is TPlatformSprite) then
+    (pnlPlatforms.TagObject as TPlatformSprite).RightBlocType :=
+      TGameLevelPlatformEndType.Cliff;
+end;
+
+procedure TfrmMain.ClickOnSpriteInfoButton(Sender: TObject);
+var
+  btn: TButton;
+  obj: TObject;
+begin
+  if (Sender is TButton) then
+  begin
+    btn := Sender as TButton;
+    if assigned(btn.TagObject) and (btn.TagObject is TSprite) then
+    begin
+      obj := btn.TagObject;
+      if (obj is TPlatformSprite) then
+        ShowPanelPlatform(obj as TPlatformSprite)
+      else if (obj is TDoorSprite) then
+        ShowPanelDoor(obj as TDoorSprite);
+    end;
+  end;
 end;
 
 procedure TfrmMain.RoomDragDrop(Sender: TObject; const Data: TDragObject;
@@ -450,7 +651,7 @@ begin
     AddPlatform(sbRoom, (FSelectedSprite as TPlatformSprite).Look, true, LX, LY,
       CurrentRoom.Platforms.GetNewPlatform)
   else if FSelectedSprite is TPlayerSprite then
-    AddPlayer(sbRoom, true, LX, LY) // TODOPP
+    AddPlayer(sbRoom, true, LX, LY)
   else if FSelectedSprite is TItemSprite then
     AddItem(sbRoom, (FSelectedSprite as TItemSprite).ItemType, true, LX, LY,
       CurrentRoom.Items.GetNewItem)
@@ -492,6 +693,8 @@ procedure TfrmMain.ShowCurrentRoom;
 var
   I: integer;
 begin
+  HideToolBarPanels;
+
   while sbRoom.Content.ChildrenCount > 0 do
     sbRoom.Content.Children[0].Free;
 
@@ -519,6 +722,68 @@ begin
 
   lblRooms.Text := 'Current room';
   lblRoomId.Text := CurrentRoom.id.ToString;
+end;
+
+procedure TfrmMain.ShowPanelDoor(const ADoor: TDoorSprite);
+var
+  item: TListBoxItem;
+  glDoor: TGameLevelDoor;
+begin
+  HideToolBarPanels;
+  lblDoors.Text := 'Door ' + CurrentRoom.id.ToString + '-' + ADoor.id.ToString;
+  pnlDoors.TagObject := ADoor;
+
+  rbDoorDirectionFront.IsChecked :=
+    (ADoor.Direction in [TGameLevelDoorDirection.Front,
+    TGameLevelDoorDirection.none]);
+  rbDoorDirectionBack.IsChecked :=
+    (ADoor.Direction = TGameLevelDoorDirection.back);
+
+  if assigned(ADoor.GameLevelControl) and
+    (ADoor.GameLevelControl is TGameLevelDoor) then
+    glDoor := ADoor.GameLevelControl as TGameLevelDoor
+  else
+    glDoor := nil;
+
+  // TODO : pouvoir détacher une porte sans l'attacher à autre chose (ou pouvoir la désactiver)
+  BlocCbDoorChange := true;
+  try
+    cbDoorLinkedDoor.Items.Clear;
+    for var Value in CurrentGameLevel.Doors.Values do
+      if Value <> glDoor then
+      begin
+        item := TListBoxItem.Create(self);
+        item.Text := Value.Room.ToString + '-' + Value.id.ToString;
+        item.TagObject := Value;
+        cbDoorLinkedDoor.AddObject(item);
+        if (Value.id = glDoor.LinkedDoor) then
+          cbDoorLinkedDoor.ItemIndex := item.Index;
+      end;
+  finally
+    BlocCbDoorChange := false;
+  end;
+
+  pnlDoors.Visible := true;
+end;
+
+procedure TfrmMain.ShowPanelPlatform(const APlatform: TPlatformSprite);
+begin
+  HideToolBarPanels;
+  lblPlatforms.Text := 'Platform';
+  pnlPlatforms.TagObject := APlatform;
+  edtPlatformNbBlocks.Text := APlatform.NbBloc.ToString;
+
+  rbPlatformLeftBloc.IsChecked :=
+    (APlatform.LeftBlocType in [TGameLevelPlatformEndType.Bloc,
+    TGameLevelPlatformEndType.none]);
+  rbPlatformLeftCliff.IsChecked :=
+    (APlatform.LeftBlocType = TGameLevelPlatformEndType.Cliff);
+  rbPlatformRightBloc.IsChecked :=
+    (APlatform.RightBlocType in [TGameLevelPlatformEndType.Bloc,
+    TGameLevelPlatformEndType.none]);
+  rbPlatformRightCliff.IsChecked :=
+    (APlatform.RightBlocType = TGameLevelPlatformEndType.Cliff);
+  pnlPlatforms.Visible := true;
 end;
 
 initialization
