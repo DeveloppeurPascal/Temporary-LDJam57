@@ -1,5 +1,3 @@
-- dans l'éditeur de niveau, implémenter les propriétés des portes
-- dans l'éditeur de niveau, implémenter les propriétés des plateformes
 - dans l'éditeur de niveau, pouvoir supprimer un élément de la salle
 
 - trouver un nom pour le jeu
@@ -22,4 +20,3 @@
 - dans l'éditeur de niveau, changer les déplacements entre salles en proposant une liste en plus ou plutôt que boutons Prec/Suiv
 - dans l'éditeur de niveau, ne pas autoriser la fermeture sans choisir de sauvegarder ou annuler les modifications en cours
 - dans l'éditeur de niveau, ajouter un bouton pour quitter le programme
-
