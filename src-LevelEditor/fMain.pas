@@ -17,7 +17,9 @@ uses
   FMX.StdCtrls,
   FMX.Controls.Presentation,
   FMX.Objects,
-  FMX.Effects;
+  FMX.Effects,
+  uSprites,
+  uGameLevel;
 
 type
   TfrmMain = class(TForm)
@@ -35,26 +37,39 @@ type
     btnSave: TButton;
     btnTest: TButton;
     flBottom: TFlowLayout;
-    Image1: TImage;
-    GlowEffect1: TGlowEffect;
     BackgroundWall: TRectangle;
     sbRoom: TScrollBox;
     procedure FormResize(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure sbRoomMouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Single);
+    procedure RoomDragDrop(Sender: TObject; const Data: TDragObject;
+      const Point: TPointF);
+    procedure RoomDragOver(Sender: TObject; const Data: TDragObject;
+      const Point: TPointF; var Operation: TDragOperation);
   private
-    FSelectedItem: integer;
-    FSelectedItemWidth, FSelectedItemHeight: Single;
+    FSelectedSprite: TSprite;
+    FSelectedGlowEffect: TGlowEffect;
   protected
+    DragStartX, DragStartY: Single;
     procedure CalcBottomPanelHeight;
     procedure FillBottomPanel;
     /// <summary>
     /// Click on elements in the bottom panel
     /// </summary>
-    procedure SelectImage(Sender: TObject);
+    procedure SelectSprite(Sender: TObject);
+    procedure ItemMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Single);
   public
-
+    procedure AddItemToRoom(const Source: TSprite; const X, Y: Single);
+    procedure AddDoor(const Parent: TFMXObject; const Look: TGameLevelDoorLook;
+      const IsInRoom: boolean = false; const X: Single = 0;
+      const Y: Single = 0);
+    procedure AddPlatform(const Parent: TFMXObject;
+      const Look: TGameLevelPlatformLook; const IsInRoom: boolean = false;
+      const X: Single = 0; const Y: Single = 0);
+    procedure AddPlayer(const Parent: TFMXObject;
+      const IsInRoom: boolean = false; const X: Single = 0;
+      const Y: Single = 0);
   end;
 
 var
@@ -65,16 +80,113 @@ implementation
 {$R *.fmx}
 
 uses
-  uGameLevel,
   USVGCharacters,
-  USVGDoors,
-  USVGJumperPack,
-  USVGPhysicsAssets,
   USVGWall,
   Olf.Skia.SVGToBitmap,
-  uSVGBitmapManager_InputPrompts;
+  uSVGBitmapManager_InputPrompts,
+  USVGPlatformerAssetsBase;
 
-{ TForm1 }
+procedure TfrmMain.AddDoor(const Parent: TFMXObject;
+  const Look: TGameLevelDoorLook; const IsInRoom: boolean; const X, Y: Single);
+var
+  Sprite: TDoorSprite;
+begin
+  Sprite := TDoorSprite.Create(self);
+  Sprite.BeginUpdate;
+  try
+    Sprite.Margins.Bottom := 5;
+    Sprite.Margins.right := 5;
+    Sprite.Look := Look;
+    Sprite.Position.X := X;
+    Sprite.Position.Y := Y;
+    if IsInRoom then
+    begin
+      Sprite.Direction := TGameLevelDoorDirection.back;
+      Sprite.DragMode := TDragMode.dmAutomatic;
+      Sprite.OnMouseMove := ItemMouseMove;
+    end
+    else
+    begin
+      Sprite.Direction := TGameLevelDoorDirection.none;
+      Sprite.DragMode := TDragMode.dmManual;
+      Sprite.onclick := SelectSprite;
+    end;
+    Sprite.Parent := Parent;
+  finally
+    Sprite.EndUpdate;
+  end;
+end;
+
+procedure TfrmMain.AddItemToRoom(const Source: TSprite; const X, Y: Single);
+begin
+  if Source is TDoorSprite then
+    AddDoor(sbRoom, (Source as TDoorSprite).Look, true, X, Y)
+  else if Source is TPlatformSprite then
+    AddPlatform(sbRoom, (Source as TPlatformSprite).Look, true, X, Y)
+  else if Source is TPlayerSprite then
+    AddPlayer(sbRoom, true, X, Y)
+  else
+    raise Exception.Create('Unknown sprite type.');
+end;
+
+procedure TfrmMain.AddPlatform(const Parent: TFMXObject;
+  const Look: TGameLevelPlatformLook; const IsInRoom: boolean;
+  const X, Y: Single);
+var
+  Sprite: TPlatformSprite;
+begin
+  Sprite := TPlatformSprite.Create(self);
+  Sprite.BeginUpdate;
+  try
+    Sprite.Margins.Bottom := 5;
+    Sprite.Margins.right := 5;
+    Sprite.Look := Look;
+    Sprite.Position.X := X;
+    Sprite.Position.Y := Y;
+    if IsInRoom then
+    begin
+      Sprite.DragMode := TDragMode.dmAutomatic;
+      Sprite.OnMouseMove := ItemMouseMove;
+      sprite.NbBloc := random(10);
+    end
+    else
+    begin
+      Sprite.DragMode := TDragMode.dmManual;
+      Sprite.onclick := SelectSprite;
+    end;
+    Sprite.Parent := Parent;
+  finally
+    Sprite.EndUpdate;
+  end;
+end;
+
+procedure TfrmMain.AddPlayer(const Parent: TFMXObject; const IsInRoom: boolean;
+  const X, Y: Single);
+var
+  Sprite: TPlayerSprite;
+begin
+  Sprite := TPlayerSprite.Create(self);
+  Sprite.BeginUpdate;
+  try
+    Sprite.Margins.Bottom := 5;
+    Sprite.Margins.right := 5;
+    Sprite.Position.X := X;
+    Sprite.Position.Y := Y;
+    if IsInRoom then
+    begin
+      Sprite.DragMode := TDragMode.dmAutomatic;
+      Sprite.OnMouseMove := ItemMouseMove;
+    end
+    else
+    begin
+      Sprite.DragMode := TDragMode.dmManual;
+      Sprite.onclick := SelectSprite;
+    end;
+    Sprite.Parent := Parent;
+  finally
+    Sprite.EndUpdate;
+  end;
+end;
 
 procedure TfrmMain.CalcBottomPanelHeight;
 var
@@ -87,82 +199,56 @@ begin
     if (flBottom.Children[I] is tControl) then
     begin
       C := flBottom.Children[I] as tControl;
-      if H < C.position.Y + C.height + C.Margins.Bottom then
-        H := C.position.Y + C.height + C.Margins.Bottom;
+      if H < C.Position.Y + C.height + C.Margins.Bottom then
+        H := C.Position.Y + C.height + C.Margins.Bottom;
     end;
   flBottom.height := H;
 end;
 
 procedure TfrmMain.FillBottomPanel;
-  procedure AddImage(const W, H, BitmapScale: Single; const SVGId: integer);
-  var
-    img: TImage;
-  begin
-    img := TImage.create(self);
-    img.Margins.Bottom := 5;
-    img.Margins.right := 5;
-    img.onclick := SelectImage;
-    img.width := W;
-    img.height := H;
-    img.tag := SVGId;
-    img.bitmap.assign(TOlfSVGBitmapList.bitmap(SVGId, round(W), round(H),
-      BitmapScale));
-    img.parent := flBottom;
-  end;
-
-var
-  BitmapScale, W, H: Single;
 begin
   while flBottom.ChildrenCount > 0 do
     flBottom.Children[0].Free;
 
-  BitmapScale := Image1.bitmap.BitmapScale;
-  W := 50;
-  H := 50;
-
   // Doors
-  AddImage(W, H, BitmapScale, TSVGDoors.tag + CSVGDoor10);
-  AddImage(W, H, BitmapScale, TSVGDoors.tag + CSVGDoor20);
-  AddImage(W, H, BitmapScale, TSVGDoors.tag + CSVGDoor30);
-  AddImage(W, H, BitmapScale, TSVGDoors.tag + CSVGDoor40);
+  AddDoor(flBottom, TGameLevelDoorLook.BrownUsed);
+  AddDoor(flBottom, TGameLevelDoorLook.Brown);
+  AddDoor(flBottom, TGameLevelDoorLook.GreyUsed);
+  AddDoor(flBottom, TGameLevelDoorLook.Grey);
 
   // Platforms
-  AddImage(W * 2, H, BitmapScale, TSVGJumperPack.tag + CSVGPlatformGreyLarge);
-  AddImage(W * 2, H, BitmapScale, TSVGJumperPack.tag +
-    CSVGPlatformGreyLargeBroken);
-  AddImage(W, H, BitmapScale, TSVGJumperPack.tag + CSVGPlatformGreyShort);
-  AddImage(W, H, BitmapScale, TSVGJumperPack.tag + CSVGPlatformGreyShortBroken);
-  AddImage(W * 2, H, BitmapScale, TSVGJumperPack.tag + CSVGPlatformMaroonLarge);
-  AddImage(W * 2, H, BitmapScale, TSVGJumperPack.tag +
-    CSVGPlatformMaroonLargeBroken);
-  AddImage(W, H, BitmapScale, TSVGJumperPack.tag + CSVGPlatformMaroonShort);
-  AddImage(W, H, BitmapScale, TSVGJumperPack.tag +
-    CSVGPlatformMaroonShortBroken);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Castle);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Dirt);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Grass);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Sand);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Snow);
+  AddPlatform(flBottom, TGameLevelPlatformLook.Stone);
 
   // Player
-  AddImage(W, H, BitmapScale, TSVGCharacters.tag + CSVGZombieIdle);
+  AddPlayer(flBottom);
 
   CalcBottomPanelHeight;
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  FSelectedItem := -1;
+  FSelectedSprite := nil;
+  FSelectedGlowEffect := TGlowEffect.Create(self);
 
   tthread.ForceQueue(nil,
     procedure
     begin
       FillBottomPanel;
       BackgroundWall.fill.bitmap.bitmap.assign
-        (getBitmapFromSVG(TSVGWallIndex.WallChoco, 50, 50,
-        Image1.bitmap.BitmapScale));
-      with TRectangle.create(self) do
+        (getBitmapFromSVG(TSVGWallIndex.WallChoco, CDefaultSpriteSize,
+        CDefaultSpriteSize, GetBitmapScale));
+      with TRectangle.Create(self) do
       begin
         width := 1;
         height := 1;
-        position.X := 10000;
-        position.Y := 10000;
-        parent := sbRoom;
+        Position.X := 10000;
+        Position.Y := 10000;
+        Parent := sbRoom;
       end;
     end);
 end;
@@ -172,44 +258,78 @@ begin
   CalcBottomPanelHeight;
 end;
 
+procedure TfrmMain.ItemMouseMove(Sender: TObject; Shift: TShiftState;
+X, Y: Single);
+begin
+  DragStartX := X;
+  DragStartY := Y;
+end;
+
+procedure TfrmMain.RoomDragDrop(Sender: TObject; const Data: TDragObject;
+const Point: TPointF);
+var
+  Source: TSprite;
+  Dest: TScrollBox;
+begin
+  if (Data.Source is TSprite) and assigned(Sender) and (Sender is TScrollBox)
+  then
+  begin
+    Source := Data.Source as TSprite;
+    Dest := Sender as TScrollBox;
+    Source.BeginUpdate;
+    try
+      Source.Position.X := Point.X + Dest.ViewportPosition.X - DragStartX;
+      Source.Position.Y := Point.Y + Dest.ViewportPosition.Y - DragStartY;
+    finally
+      Source.EndUpdate;
+    end;
+  end;
+end;
+
+procedure TfrmMain.RoomDragOver(Sender: TObject; const Data: TDragObject;
+const Point: TPointF; var Operation: TDragOperation);
+begin
+  Operation := TDragOperation.none;
+  if (Data.Source is TSprite) then
+    Operation := TDragOperation.move;
+end;
+
 procedure TfrmMain.sbRoomMouseDown(Sender: TObject; Button: TMouseButton;
 Shift: TShiftState; X, Y: Single);
 var
-  img: TImage;
+  Dest: TScrollBox;
 begin
-  if FSelectedItem < 0 then
+  if assigned(Sender) and (Sender is TScrollBox) then
+    Dest := Sender as TScrollBox
+  else
     exit;
 
-  img := TImage.create(self);
-  // img.onclick :=
-  img.width := FSelectedItemWidth;
-  img.height := FSelectedItemHeight;
-  img.position.X := X + sbRoom.ViewportPosition.X;
-  img.position.Y := Y + sbRoom.ViewportPosition.Y;
-  img.bitmap.assign(TOlfSVGBitmapList.bitmap(FSelectedItem, round(img.width),
-    round(img.height), Image1.bitmap.BitmapScale));
-  img.parent := sbRoom;
+  if not assigned(FSelectedSprite) then
+    exit;
+
+  AddItemToRoom(FSelectedSprite, X + Dest.ViewportPosition.X - DragStartX,
+    Y + Dest.ViewportPosition.Y - DragStartY);
 end;
 
-procedure TfrmMain.SelectImage(Sender: TObject);
+procedure TfrmMain.SelectSprite(Sender: TObject);
 var
-  img: TImage;
+  Sprite: TSprite;
 begin
-  if assigned(Sender) and (Sender is TImage) then
-    if (FSelectedItem = img.tag) then
+  if assigned(Sender) and (Sender is TSprite) then
+  begin
+    Sprite := Sender as TSprite;
+    if (FSelectedSprite = Sprite) then
     begin
-      GlowEffect1.enabled := false;
-      FSelectedItem := -1;
+      FSelectedGlowEffect.enabled := false;
+      FSelectedSprite := nil;
     end
     else
     begin
-      img := Sender as TImage;
-      GlowEffect1.parent := img;
-      GlowEffect1.enabled := true;
-      FSelectedItem := img.tag;
-      FSelectedItemWidth := img.width;
-      FSelectedItemHeight := img.height;
+      FSelectedGlowEffect.Parent := Sprite;
+      FSelectedGlowEffect.enabled := true;
+      FSelectedSprite := Sprite;
     end;
+  end;
 end;
 
 end.

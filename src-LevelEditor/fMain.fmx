@@ -8,6 +8,7 @@ object frmMain: TfrmMain
   FormFactor.Width = 320
   FormFactor.Height = 480
   FormFactor.Devices = [Desktop]
+  FullScreen = True
   OnCreate = FormCreate
   OnResize = FormResize
   DesignerMasterStyle = 0
@@ -25,6 +26,8 @@ object frmMain: TfrmMain
       Size.Height = 517.000000000000000000
       Size.PlatformDefault = False
       TabOrder = 0
+      OnDragOver = RoomDragOver
+      OnDragDrop = RoomDragDrop
       OnMouseDown = sbRoomMouseDown
       Viewport.Width = 1056.000000000000000000
       Viewport.Height = 517.000000000000000000
@@ -267,16 +270,5 @@ object frmMain: TfrmMain
     Justify = Left
     JustifyLastLine = Left
     FlowDirection = LeftToRight
-  end
-  object Image1: TImage
-    MultiResBitmap = <
-      item
-      end>
-    Visible = False
-    object GlowEffect1: TGlowEffect
-      Softness = 0.400000005960464400
-      GlowColor = claGold
-      Opacity = 0.899999976158142100
-    end
   end
 end

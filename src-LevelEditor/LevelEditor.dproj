@@ -321,6 +321,8 @@
         <DCCReference Include="..\src\uSVGBitmapManager_InputPrompts.pas"/>
         <DCCReference Include="..\lib-externes\Gamolf-FMX-Game-Starter-Kit\assets\kenney_nl\InputPrompts\USVGInputPrompts.pas"/>
         <DCCReference Include="..\_PRIVATE\assets\AdobeStock\AdobeStock_90592983\Doors\USVGDoors.pas"/>
+        <DCCReference Include="..\assets\Kenney.nl\Platformer Assets Base\PlatformerAssetsBase\USVGPlatformerAssetsBase.pas"/>
+        <DCCReference Include="..\src\uSprites.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

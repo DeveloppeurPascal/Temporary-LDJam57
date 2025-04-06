@@ -14,7 +14,9 @@ uses
   USVGCharacters in '..\assets\Kenney.nl\Platformer Characters 1\Characters\USVGCharacters.pas',
   uSVGBitmapManager_InputPrompts in '..\src\uSVGBitmapManager_InputPrompts.pas',
   USVGInputPrompts in '..\lib-externes\Gamolf-FMX-Game-Starter-Kit\assets\kenney_nl\InputPrompts\USVGInputPrompts.pas',
-  USVGDoors in '..\_PRIVATE\assets\AdobeStock\AdobeStock_90592983\Doors\USVGDoors.pas';
+  USVGDoors in '..\_PRIVATE\assets\AdobeStock\AdobeStock_90592983\Doors\USVGDoors.pas',
+  USVGPlatformerAssetsBase in '..\assets\Kenney.nl\Platformer Assets Base\PlatformerAssetsBase\USVGPlatformerAssetsBase.pas',
+  uSprites in '..\src\uSprites.pas';
 
 {$R *.res}
 
