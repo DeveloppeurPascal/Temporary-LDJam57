@@ -2,7 +2,6 @@
 
 interface
 
-// TODO : retirer les blocs de code commentés si inutilisés
 uses
   FMX.Graphics,
   USVGInputPrompts,
@@ -11,7 +10,8 @@ uses
   USVGIcons,
   USVGJumperPack,
   USVGPhysicsAssets,
-  USVGWall;
+  USVGWall,
+  USVGPlatformerAssetsBase;
 
 /// <summary>
 /// Returns a bitmap from a SVG image
@@ -20,10 +20,6 @@ function getBitmapFromSVG(const Index: TSVGInputPromptsIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
 function getBitmapFromSVG(const Index: TSVGWallIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
-// function getBitmapFromSVG(const Index: TSVGUIPackIndex;
-// const width, height: single; const BitmapScale: single): tbitmap; overload;
-// function getBitmapFromSVG(const Index: TSVGPuzzleAssets2Index;
-// const width, height: single; const BitmapScale: single): tbitmap; overload;
 function getBitmapFromSVG(const Index: TSVGPhysicsAssetsIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
 function getBitmapFromSVG(const Index: TSVGJumperPackIndex;
@@ -33,6 +29,8 @@ function getBitmapFromSVG(const Index: TSVGIconsIndex;
 function getBitmapFromSVG(const Index: TSVGDoorsIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
 function getBitmapFromSVG(const Index: TSVGCharactersIndex;
+  const width, height: single; const BitmapScale: single): tbitmap; overload;
+function getBitmapFromSVG(const Index: TSVGPlatformerAssetsBaseIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
 
 implementation
@@ -53,20 +51,6 @@ begin
   result := TOlfSVGBitmapList.Bitmap(ord(Index) + TSVGWall.Tag, round(width),
     round(height), BitmapScale);
 end;
-
-// function getBitmapFromSVG(const Index: TSVGUIPackIndex;
-// const width, height: single; const BitmapScale: single): tbitmap; overload;
-// begin
-// result := TOlfSVGBitmapList.Bitmap(ord(Index) + TSVGUIPack.Tag, round(width),
-// round(height), BitmapScale);
-// end;
-//
-// function getBitmapFromSVG(const Index: TSVGPuzzleAssets2Index;
-// const width, height: single; const BitmapScale: single): tbitmap; overload;
-// begin
-// result := TOlfSVGBitmapList.Bitmap(ord(Index) + TSVGPuzzleAssets2.Tag,
-// round(width), round(height), BitmapScale);
-// end;
 
 function getBitmapFromSVG(const Index: TSVGPhysicsAssetsIndex;
   const width, height: single; const BitmapScale: single): tbitmap; overload;
@@ -103,17 +87,24 @@ begin
     round(width), round(height), BitmapScale);
 end;
 
+function getBitmapFromSVG(const Index: TSVGPlatformerAssetsBaseIndex;
+  const width, height: single; const BitmapScale: single): tbitmap; overload;
+begin
+  result := TOlfSVGBitmapList.Bitmap(ord(Index) + TSVGPlatformerAssetsBase.Tag,
+    round(width), round(height), BitmapScale);
+end;
+
 procedure RegisterSVGImages;
 begin
   TSVGWall.Tag := TOlfSVGBitmapList.AddItem(SVGWall);
-//  TSVGUIPack.Tag := TOlfSVGBitmapList.AddItem(SVGUIPack);
-//  TSVGPuzzleAssets2.Tag := TOlfSVGBitmapList.AddItem(SVGPuzzleAssets2);
   TSVGPhysicsAssets.Tag := TOlfSVGBitmapList.AddItem(SVGPhysicsAssets);
   TSVGJumperPack.Tag := TOlfSVGBitmapList.AddItem(SVGJumperPack);
   TSVGIcons.Tag := TOlfSVGBitmapList.AddItem(SVGIcons);
   TSVGDoors.Tag := TOlfSVGBitmapList.AddItem(SVGDoors);
   TSVGCharacters.Tag := TOlfSVGBitmapList.AddItem(SVGCharacters);
   TSVGInputPrompts.Tag := TOlfSVGBitmapList.AddItem(SVGInputPrompts);
+  TSVGPlatformerAssetsBase.Tag := TOlfSVGBitmapList.AddItem
+    (SVGPlatformerAssetsBase);
 end;
 
 initialization
