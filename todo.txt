@@ -1,6 +1,5 @@
 - dans l'éditeur de niveau, pouvoir supprimer un élément de la salle
 
-- trouver un nom pour le jeu
 - implémenter l'affichage et les déplacements de la zone d'écran pendant une partie
 - faire le jeu (sans fioritures pour la première version, directement menu + écran de jeu)
 
