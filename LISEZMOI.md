@@ -1,32 +1,20 @@
-# Delphi-Projects-Template
+# Zomcave
 
 [This page in English.](README.md)
 
-**Un modèle de dépôt git pour mes projets Delphi (ou autres).**
+Zomcave a été démarré lors de la Ludum Dare 57 en avril 2025 mais le temps du week-end a essentiellement été consacré à la recherche des éléments graphiques, leur export sous forme de fichiers SVG pour les utiliser dans Delphi et la création de l'éditeur de niveau. Celui-ci étant fonctionnel au dernier moment le développement jeu n'a pas été entamé. Il le sera prochainement et ce dépôt de code sera mis à jour en conséquence.
 
-**Ce template est distribué sous licence MIT. La licence AGPL est pour les projets que je crée à partir de ce template de dépôt de code. Utilisez la licence que vous voulez si vous utilisez ce template.**
+Dans ce jeu un zombie ère dans des grottes et tente de survivre en se nourrissant de ce qu'il y trouve.
+
+Le thème de cette game jam était "Depths". Pour coller avec cette idée j'ai cherché une atmosphère sombre et suis parti sur la profondeur d'écran en plus des profondeurs de la terre. Pour passer d'une salle à l'autre on emprunte des portes qui nous éloignent du joueur (vers le fond de l'écran) ou nous en rapprochent (vers l'avant de l'écran).
 
 Ce dépôt de code contient un projet développé en langage Pascal Objet sous Delphi. Vous ne savez pas ce qu'est Dephi ni où le télécharger ? Vous en saurez plus [sur ce site web](https://delphi-resources.developpeur-pascal.fr/).
 
-## Utiliser ce logiciel
-
-Consultez [le site de AAA](https://BBB.olfsoftware.fr) pour télécharger sa version compilée, en savoir plus sur son fonctionnement, accéder à des vidéos et articles, connaître les différentes versions disponibles et leurs fonctionnalités, contacter le support utilisateurs...
-
 ## Utiliser ce jeu vidéo
 
-Consultez [le site de AAA](https://BBB.gamolf.fr) pour télécharger sa version compilée, en savoir plus sur son fonctionnement, accéder à des vidéos et articles, connaître les différentes versions disponibles et leurs fonctionnalités, contacter le support utilisateurs...
+Consultez [le site de Zomcave](https://zomcave.gamolf.fr) pour télécharger sa version compilée, en savoir plus sur son fonctionnement, accéder à des vidéos et articles, connaître les différentes versions disponibles et leurs fonctionnalités, contacter le support utilisateurs...
 
 ## Présentations et conférences
-
-### Présentations en ligne
-
-* [talk title](talk url) (en anglais)
-* [talk title](talk url) (en français)
-
-### XXX 2024
-
-* [talk title](talk url) (en anglais)
-* [talk title](talk url) (en français)
 
 ### Twitch
 
@@ -34,12 +22,14 @@ Suivez mes streams de développement de logiciels, jeux vidéo, applications mob
 
 ## Installation des codes sources
 
-Pour télécharger ce dépôt de code il est recommandé de passer par "git" mais vous pouvez aussi télécharger un ZIP directement depuis [son dépôt GitHub](https://github.com/DeveloppeurPascal/XXXXXXXXXX).
+Pour télécharger ce dépôt de code il est recommandé de passer par "git" mais vous pouvez aussi télécharger un ZIP directement depuis [son dépôt GitHub](https://github.com/DeveloppeurPascal/Zomcave-LudumDare57).
 
 Ce projet utilise des dépendances sous forme de sous modules. Ils seront absents du fichier ZIP. Vous devrez les télécharger à la main.
 
-* [YYY](ZZZ) doit être installé dans le sous dossier ./lib-externes/YYY
-* [YYY](ZZZ) doit être installé dans le sous dossier ./lib-externes/YYY
+* [DeveloppeurPascal/AboutDialog-Delphi-Component](https://github.com/DeveloppeurPascal/AboutDialog-Delphi-Component) doit être installé dans le sous dossier ./lib-externes/AboutDialog-Delphi-Component
+* [DeveloppeurPascal/Delphi-Game-Engine](https://github.com/DeveloppeurPascal/Delphi-Game-Engine) doit être installé dans le sous dossier ./lib-externes/Delphi-Game-Engine
+* [DeveloppeurPascal/Gamolf-FMX-Game-Starter-Kit](https://github.com/DeveloppeurPascal/Gamolf-FMX-Game-Starter-Kit) doit être installé dans le sous dossier ./lib-externes/Gamolf-FMX-Game-Starter-Kit
+* [DeveloppeurPascal/librairies](https://github.com/DeveloppeurPascal/librairies) doit être installé dans le sous dossier ./lib-externes/librairies
 
 ## Documentation et assistance
 
@@ -47,9 +37,9 @@ Je passe par des commentaires au format [XMLDOC](https://docwiki.embarcadero.com
 
 J'utilise régulièrement l'outil [DocInsight](https://devjetsoftware.com/products/documentation-insight/) pour les saisir et contrôler leur formatage.
 
-L'export de la documentation est fait en HTML par [DocInsight](https://devjetsoftware.com/products/documentation-insight/) ou [PasDoc](https://pasdoc.github.io) vers le dossier /docs du dépôt. Vous y avez aussi [accès en ligne](https://developpeurpascal.github.io/XXXXXXXXXX) grâce à l'hébergement offert par GitHub Pages.
+L'export de la documentation est fait en HTML par [DocInsight](https://devjetsoftware.com/products/documentation-insight/) ou [PasDoc](https://pasdoc.github.io) vers le dossier /docs du dépôt. Vous y avez aussi [accès en ligne](https://developpeurpascal.github.io/Zomcave-LudumDare57) grâce à l'hébergement offert par GitHub Pages.
 
-D'autres informations (tutoriels, articles, vidéos, FAQ, présentations et liens) sont disponibles sur [le site web du projet](https://BBB.developpeur-pascal.fr) ou [le devlog du projet](https://developpeur-pascal.fr/BBB.html).
+D'autres informations (tutoriels, articles, vidéos, FAQ, présentations et liens) sont disponibles sur [le site web du projet](https://zomcave.gamolf.fr) ou [le devlog du projet](https://developpeur-pascal.fr/zomcave.html).
 
 Si vous avez besoin d'explications ou d'aide pour comprendre ou utiliser certaines parties de ce projet dans le vôtre, n'hésitez pas à [me contacter](https://developpeur-pascal.fr/nous-contacter.php). Je pourrai soit vous orienter vers une ressource en ligne, soit vous proposer une assistance sous forme de prestation payante ou gratuite selon les cas. Vous pouvez aussi me faire signe à l'occasion d'une conférence ou pendant une présentation en ligne.
 
@@ -61,7 +51,7 @@ Normalement mes librairies et composants doivent aussi fonctionner au moins sur 
 
 Aucune garantie de compatibilité avec des versions antérieures n'est fournie même si je m'efforce de faire du code propre et ne pas trop utiliser les nouvelles façons d'écrire dedans (type inference, inline var et multilines strings).
 
-Si vous détectez des anomalies sur des versions antérieures n'hésitez pas à [les rapporter](https://github.com/DeveloppeurPascal/XXXXXXXXXX/issues) pour que je teste et tente de corriger ou fournir un contournement.
+Si vous détectez des anomalies sur des versions antérieures n'hésitez pas à [les rapporter](https://github.com/DeveloppeurPascal/Zomcave-LudumDare57/issues) pour que je teste et tente de corriger ou fournir un contournement.
 
 ## Licence d'utilisation de ce dépôt de code et de son contenu
 
@@ -72,15 +62,13 @@ Vous êtes libre d'utiliser le contenu de ce dépôt de code n'importe où à co
 * de diffuser les modifications apportées aux fichiers fournis dans ce projet sous licence AGPL (en y laissant les mentions de copyright d'origine (auteur, lien vers ce dépôt, licence) obligatoirement complétées par les vôtres)
 * de diffuser les codes sources de vos créations sous licence AGPL
 
-Si cette licence ne convient pas à vos besoins (notamment pour un projet commercial) je propose aussi [des licences classiques pour les développeurs et les entreprises](https://BBB.developpeur-pascal.fr).
-
 Certains éléments inclus dans ce dépôt peuvent dépendre de droits d'utilisation de tiers (images, sons, ...). Ils ne sont pas réutilisables dans vos projets sauf mention contraire.
 
 Les codes sources de ce dépôt de code comme leur éventuelle version compilée sont fournis en l'état sans garantie d'aucune sorte.
 
 ## Comment demander une nouvelle fonctionnalité, signaler un bogue ou une faille de sécurité ?
 
-Si vous voulez une réponse du propriétaire de ce dépôt la meilleure façon de procéder pour demander une nouvelle fonctionnalité ou signaler une anomalie est d'aller sur [le dépôt de code sur GitHub](https://github.com/DeveloppeurPascal/XXXXXXXXXX) et [d'ouvrir un ticket](https://github.com/DeveloppeurPascal/XXXXXXXXXX/issues).
+Si vous voulez une réponse du propriétaire de ce dépôt la meilleure façon de procéder pour demander une nouvelle fonctionnalité ou signaler une anomalie est d'aller sur [le dépôt de code sur GitHub](https://github.com/DeveloppeurPascal/Zomcave-LudumDare57) et [d'ouvrir un ticket](https://github.com/DeveloppeurPascal/Zomcave-LudumDare57/issues).
 
 Si vous avez trouvé une faille de sécurité n'en parlez pas en public avant qu'un correctif n'ait été déployé ou soit disponible. [Contactez l'auteur du dépôt en privé](https://developpeur-pascal.fr/nous-contacter.php) pour expliquer votre trouvaille.
 
